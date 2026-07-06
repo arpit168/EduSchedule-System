@@ -3,6 +3,22 @@ import bcrypt from 'bcryptjs';
 
 const userSchema = new mongoose.Schema(
   {
+    firstName: {
+      type: String,
+      trim: true,
+      default: '',
+    },
+    lastName: {
+      type: String,
+      trim: true,
+      default: '',
+    },
+    username: {
+      type: String,
+      trim: true,
+      unique: true,
+      sparse: true,
+    },
     name: {
       type: String,
       required: [true, 'Please provide a name'],

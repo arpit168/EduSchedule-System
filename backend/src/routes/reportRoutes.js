@@ -5,6 +5,7 @@ import {
   getSubjectDistributionReport,
   getRoomUsageReport,
   getFreeTeachersFinder,
+  getWeeklyUsageReport,
 } from '../controllers/reportController.js';
 import { protect } from '../middlewares/authMiddleware.js';
 
@@ -15,5 +16,6 @@ router.get('/workload', protect, getTeacherWorkloadReport);
 router.get('/subjects', protect, getSubjectDistributionReport);
 router.get('/rooms', protect, getRoomUsageReport);
 router.get('/free-teachers', protect, getFreeTeachersFinder);
+router.get('/weekly-usage', protect, getWeeklyUsageReport);
 
 export default router;

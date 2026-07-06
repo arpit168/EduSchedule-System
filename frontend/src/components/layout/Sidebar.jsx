@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import useAuthStore from '../../store/useAuthStore';
 import {
@@ -16,9 +17,10 @@ import {
   ChevronLeft,
   ChevronRight,
   Clock,
+  X,
 } from 'lucide-react';
 
-const Sidebar = ({ isCollapsed, setIsCollapsed }) => {
+const Sidebar = ({ isCollapsed, setIsCollapsed, isMobileOpen, setIsMobileOpen }) => {
   const { user, logout } = useAuthStore();
   const location = useLocation();
 
@@ -40,103 +42,170 @@ const Sidebar = ({ isCollapsed, setIsCollapsed }) => {
 
   const filteredItems = navItems.filter((item) => !item.roles || item.roles.includes(user?.role || 'Teacher'));
 
-  return (
-    <aside
-      className={`relative flex flex-col border-r border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl transition-all duration-300 z-30 ${isCollapsed ? 'w-20' : 'w-64'
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape' && isMobileOpen && setIsMobileOpen) {
+        setIsMobileOpen(false);
+      }
+    };
+    if (isMobileOpen) {
+      document.body.style.overflow = 'hidden';
+      window.addEventListener('keydown', handleKeyDown);
+    }
+    return () => {
+      document.body.style.overflow = 'unset';
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isMobileOpen, setIsMobileOpen]);
+
+  const renderNavLinks = (collapsed = false, isMobile = false) => (
+    <div className="flex-1 px-3 py-4 space-y-1 overflow-y-auto custom-scrollbar">
+      {filteredItems.map((item) => {
+        const Icon = item.icon;
+        const isActive = location.pathname === item.path || (item.path !== '/dashboard' && location.pathname.startsWith(item.path));
+
+        return (
+          <NavLink
+            key={item.name}
+            to={item.path}
+            onClick={() => isMobile && setIsMobileOpen && setIsMobileOpen(false)}
+            className={`flex items-center gap-3 px-3 py-2.5 rounded-xl font-medium text-sm transition-all duration-200 group relative ${
+              isActive
+                ? 'bg-gradient-to-r from-indigo-600 to-indigo-500 text-white shadow-md shadow-indigo-500/20'
+                : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/60 hover:text-slate-900 dark:hover:text-slate-200'
+            }`}
+          >
+            <Icon
+              size={20}
+              className={`shrink-0 transition-transform duration-200 ${!isActive && 'group-hover:scale-110 text-slate-500 dark:text-slate-400'}`}
+            />
+            {(!collapsed || isMobile) && <span className="truncate">{item.name}</span>}
+
+            {/* Tooltip on collapsed desktop */}
+            {collapsed && !isMobile && (
+              <div className="absolute left-full ml-2 px-2.5 py-1.5 bg-slate-900 text-white text-xs font-semibold rounded-md shadow-xl whitespace-nowrap opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto transition-opacity z-50">
+                {item.name}
+              </div>
+            )}
+          </NavLink>
+        );
+      })}
+    </div>
+  );
+
+  const renderFooter = (collapsed = false) => (
+    <div className="p-3 border-t border-slate-200/80 dark:border-slate-800/80">
+      <div
+        className={`flex items-center gap-3 p-2 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200/50 dark:border-slate-700/50 ${
+          collapsed ? 'justify-center' : 'justify-between'
         }`}
-    >
-      {/* Brand Logo & Name */}
-      <div className="flex items-center justify-between h-16 px-4 border-b border-slate-200/80 dark:border-slate-800/80">
+      >
         <div className="flex items-center gap-3 overflow-hidden">
-          <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-600 to-violet-500 text-white font-bold text-xl shadow-md shadow-indigo-500/20 shrink-0">
-            A
-          </div>
-          {!isCollapsed && (
-            <div className="flex flex-col">
-              <span className="font-bold text-slate-900 dark:text-white tracking-tight text-base truncate">
-                Learning
-              </span>
-              <span className="text-[10px] font-medium uppercase tracking-wider text-indigo-600 dark:text-indigo-400">
-                Timetable OS
-              </span>
+          <img
+            src={user?.profilePhoto || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&auto=format&fit=crop&q=80'}
+            alt={user?.name || 'User'}
+            className="w-9 h-9 rounded-lg object-cover ring-2 ring-indigo-500/30 shrink-0"
+          />
+          {!collapsed && (
+            <div className="overflow-hidden">
+              <p className="text-sm font-semibold text-slate-900 dark:text-white truncate">{user?.name}</p>
+              <p className="text-xs text-indigo-600 dark:text-indigo-400 font-medium truncate">{user?.role}</p>
             </div>
           )}
         </div>
 
-        <button
-          onClick={() => setIsCollapsed(!isCollapsed)}
-          className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-          title={isCollapsed ? 'Expand Sidebar' : 'Collapse Sidebar'}
-        >
-          {isCollapsed ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}
-        </button>
+        {!collapsed && (
+          <button
+            onClick={logout}
+            className="p-1.5 text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/30 rounded-lg transition-colors cursor-pointer"
+            title="Logout"
+          >
+            <LogOut size={18} />
+          </button>
+        )}
       </div>
+    </div>
+  );
 
-      {/* Navigation Links */}
-      <div className="flex-1 px-3 py-4 space-y-1 overflow-y-auto custom-scrollbar">
-        {filteredItems.map((item) => {
-          const Icon = item.icon;
-          const isActive = location.pathname === item.path || (item.path !== '/dashboard' && location.pathname.startsWith(item.path));
-
-          return (
-            <NavLink
-              key={item.name}
-              to={item.path}
-              className={`flex items-center gap-3 px-3 py-2.5 rounded-xl font-medium text-sm transition-all duration-200 group relative ${isActive
-                ? 'bg-gradient-to-r from-indigo-600 to-indigo-500 text-white shadow-md shadow-indigo-500/20'
-                : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/60 hover:text-slate-900 dark:hover:text-slate-200'
-                }`}
-            >
-              <Icon
-                size={20}
-                className={`shrink-0 transition-transform duration-200 ${!isActive && 'group-hover:scale-110 text-slate-500 dark:text-slate-400'
-                  }`}
-              />
-              {!isCollapsed && <span className="truncate">{item.name}</span>}
-
-              {/* Tooltip on collapsed */}
-              {isCollapsed && (
-                <div className="absolute left-full ml-2 px-2.5 py-1.5 bg-slate-900 text-white text-xs font-semibold rounded-md shadow-xl whitespace-nowrap opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto transition-opacity z-50">
-                  {item.name}
-                </div>
-              )}
-            </NavLink>
-          );
-        })}
-      </div>
-
-      {/* User Profile Summary & Logout */}
-      <div className="p-3 border-t border-slate-200/80 dark:border-slate-800/80">
-        <div
-          className={`flex items-center gap-3 p-2 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200/50 dark:border-slate-700/50 ${isCollapsed ? 'justify-center' : 'justify-between'
-            }`}
-        >
+  return (
+    <>
+      {/* Desktop Sidebar */}
+      <aside
+        className={`hidden lg:flex relative flex-col border-r border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl transition-all duration-300 z-30 ${
+          isCollapsed ? 'w-20' : 'w-64'
+        }`}
+      >
+        {/* Brand Logo & Name */}
+        <div className="flex items-center justify-between h-16 px-4 border-b border-slate-200/80 dark:border-slate-800/80">
           <div className="flex items-center gap-3 overflow-hidden">
-            <img
-              src={user?.profilePhoto || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&auto=format&fit=crop&q=80'}
-              alt={user?.name}
-              className="w-9 h-9 rounded-lg object-cover ring-2 ring-indigo-500/30 shrink-0"
-            />
+            <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-600 to-violet-500 text-white font-bold text-xl shadow-md shadow-indigo-500/20 shrink-0">
+              A
+            </div>
             {!isCollapsed && (
-              <div className="overflow-hidden">
-                <p className="text-sm font-semibold text-slate-900 dark:text-white truncate">{user?.name}</p>
-                <p className="text-xs text-indigo-600 dark:text-indigo-400 font-medium truncate">{user?.role}</p>
+              <div className="flex flex-col">
+                <span className="font-bold text-slate-900 dark:text-white tracking-tight text-base truncate">
+                  Learning
+                </span>
+                <span className="text-[10px] font-medium uppercase tracking-wider text-indigo-600 dark:text-indigo-400">
+                  Timetable OS
+                </span>
               </div>
             )}
           </div>
 
-          {!isCollapsed && (
-            <button
-              onClick={logout}
-              className="p-1.5 text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/30 rounded-lg transition-colors"
-              title="Logout"
-            >
-              <LogOut size={18} />
-            </button>
-          )}
+          <button
+            onClick={() => setIsCollapsed(!isCollapsed)}
+            className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+            title={isCollapsed ? 'Expand Sidebar' : 'Collapse Sidebar'}
+          >
+            {isCollapsed ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}
+          </button>
         </div>
-      </div>
-    </aside>
+
+        {renderNavLinks(isCollapsed, false)}
+        {renderFooter(isCollapsed)}
+      </aside>
+
+      {/* Mobile Slide-over Drawer */}
+      {isMobileOpen && (
+        <div className="fixed inset-0 z-50 lg:hidden flex overflow-hidden animate-in fade-in duration-200">
+          {/* Backdrop */}
+          <div
+            onClick={() => setIsMobileOpen(false)}
+            className="fixed inset-0 bg-slate-950/60 backdrop-blur-sm transition-opacity"
+          />
+
+          {/* Sidebar Drawer */}
+          <div className="relative w-72 max-w-[80vw] bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 shadow-2xl flex flex-col z-10 animate-in slide-in-from-left duration-300">
+            <div className="flex items-center justify-between h-16 px-4 border-b border-slate-200/80 dark:border-slate-800/80">
+              <div className="flex items-center gap-3 overflow-hidden">
+                <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-600 to-violet-500 text-white font-bold text-xl shadow-md shadow-indigo-500/20 shrink-0">
+                  A
+                </div>
+                <div className="flex flex-col">
+                  <span className="font-bold text-slate-900 dark:text-white tracking-tight text-base truncate">
+                    Learning
+                  </span>
+                  <span className="text-[10px] font-medium uppercase tracking-wider text-indigo-600 dark:text-indigo-400">
+                    Timetable OS
+                  </span>
+                </div>
+              </div>
+
+              <button
+                onClick={() => setIsMobileOpen(false)}
+                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            {renderNavLinks(false, true)}
+            {renderFooter(false)}
+          </div>
+        </div>
+      )}
+    </>
   );
 };
 

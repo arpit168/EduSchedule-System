@@ -40,21 +40,24 @@ const DashboardPage = () => {
   const [stats, setStats] = useState(null);
   const [workloadData, setWorkloadData] = useState([]);
   const [subjectData, setSubjectData] = useState([]);
+  const [weeklyUsageData, setWeeklyUsageData] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     const fetchDashboardData = async () => {
       setIsLoading(true);
       try {
-        const [statsRes, workRes, subRes] = await Promise.all([
+        const [statsRes, workRes, subRes, usageRes] = await Promise.all([
           api.get('/reports/stats'),
           api.get('/reports/workload'),
           api.get('/reports/subjects'),
+          api.get('/reports/weekly-usage'),
         ]);
 
         setStats(statsRes.data.stats);
         setWorkloadData(workRes.data.data ? workRes.data.data.slice(0, 8) : []);
         setSubjectData(subRes.data.byType || []);
+        setWeeklyUsageData(usageRes.data.data || []);
       } catch (error) {
         console.error('Error fetching dashboard data:', error);
       } finally {
@@ -65,20 +68,19 @@ const DashboardPage = () => {
     fetchDashboardData();
   }, []);
 
-  // Sample weekly usage data for AreaChart
-  const weeklyUsageData = [
-    { day: 'Mon', scheduled: 38, free: 10 },
-    { day: 'Tue', scheduled: 42, free: 6 },
-    { day: 'Wed', scheduled: 40, free: 8 },
-    { day: 'Thu', scheduled: 44, free: 4 },
-    { day: 'Fri', scheduled: 36, free: 12 },
-    { day: 'Sat', scheduled: 24, free: 24 },
-  ];
-
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-96">
-        <div className="w-10 h-10 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+      <div className="space-y-8 pb-12 animate-pulse">
+        <div className="h-48 rounded-3xl bg-slate-800/80 border border-slate-700/50" />
+        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
+          {[1, 2, 3, 4].map((i) => (
+            <div key={i} className="h-32 rounded-2xl bg-slate-800/60 border border-slate-700/50" />
+          ))}
+        </div>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          <div className="lg:col-span-2 h-96 rounded-3xl bg-slate-800/60 border border-slate-700/50" />
+          <div className="h-96 rounded-3xl bg-slate-800/60 border border-slate-700/50" />
+        </div>
       </div>
     );
   }

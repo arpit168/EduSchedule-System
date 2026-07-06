@@ -2,16 +2,26 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Mail, ArrowLeft, Send } from 'lucide-react';
 import toast from 'react-hot-toast';
+import api from '../../services/api';
 
 const ForgotPasswordPage = () => {
   const [email, setEmail] = useState('');
   const [isSubmitted, setIsSubmitted] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (!email) return;
-    setIsSubmitted(true);
-    toast.success('Password reset link sent to your email!');
+    setIsLoading(true);
+    try {
+      const res = await api.post('/auth/forgot-password', { email });
+      setIsSubmitted(true);
+      toast.success(res.data.message || 'Password reset link sent to your email!');
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Failed to send recovery link');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -44,7 +54,7 @@ const ForgotPasswordPage = () => {
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="admin@Learning.edu"
+                  placeholder="enter your email..."
                   className="w-full pl-10 pr-4 py-2.5 bg-slate-800/80 border border-slate-700 rounded-xl text-sm text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-all"
                 />
               </div>
@@ -52,9 +62,16 @@ const ForgotPasswordPage = () => {
 
             <button
               type="submit"
-              className="w-full py-3 px-4 bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white font-bold text-sm rounded-xl shadow-lg shadow-indigo-600/30 flex items-center justify-center gap-2 transition-all"
+              disabled={isLoading}
+              className="w-full py-3 px-4 bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white font-bold text-sm rounded-xl shadow-lg shadow-indigo-600/30 flex items-center justify-center gap-2 transition-all disabled:opacity-50"
             >
-              <Send size={16} /> Send Recovery Link
+              {isLoading ? (
+                <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+              ) : (
+                <>
+                  <Send size={16} /> Send Recovery Link
+                </>
+              )}
             </button>
           </form>
         )}

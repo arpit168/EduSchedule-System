@@ -1,9 +1,17 @@
 import { useState, useEffect, useCallback } from 'react';
 import api from '../services/api';
 import useAuthStore from '../store/useAuthStore';
-import { UserCheck, Plus, Edit2, Trash2, Filter, Download, X, BookOpen, GraduationCap, User } from 'lucide-react';
+import { UserCheck, Plus, Edit2, Trash2, Download, Eye, LayoutGrid, List, BookOpen, GraduationCap, Clock } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import toast from 'react-hot-toast';
+import Button from '../components/common/Button';
+import { GlassCard } from '../components/common/Card';
+import Table from '../components/common/Table';
+import { Modal, ConfirmDeleteModal } from '../components/common/Modal';
+import Drawer from '../components/common/Drawer';
+import SearchFilterBar from '../components/common/SearchFilterBar';
+import { Input, Select } from '../components/common/FormControls';
+import { Badge } from '../components/common/UIStates';
 
 const AssignmentsPage = () => {
   const { user } = useAuthStore();
@@ -13,10 +21,21 @@ const AssignmentsPage = () => {
   const [classes, setClasses] = useState([]);
   const [departments, setDepartments] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedDept, setSelectedDept] = useState('');
+  const [, setPage] = useState(1);
+  const [viewMode, setViewMode] = useState('table'); // 'table' or 'grid'
 
-  const [selectedDept, setSelectedDept] = useState('all');
+  // Modal & Drawer State
   const [modalOpen, setModalOpen] = useState(false);
   const [editingAssign, setEditingAssign] = useState(null);
+  const [viewingAssign, setViewingAssign] = useState(null);
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [assignToDelete, setAssignToDelete] = useState(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  // Form State
   const [formData, setFormData] = useState({
     teacher: '',
     subject: '',
@@ -25,14 +44,14 @@ const AssignmentsPage = () => {
   });
 
   const fetchData = useCallback(async () => {
-    await Promise.resolve();
     setIsLoading(true);
     try {
+      const deptQuery = selectedDept ? `?department=${selectedDept}` : '';
       const [aRes, tRes, sRes, cRes, dRes] = await Promise.all([
-        api.get(`/assignments?department=${selectedDept}`),
-        api.get('/teachers'),
-        api.get('/subjects'),
-        api.get('/classes'),
+        api.get(`/assignments${deptQuery}`),
+        api.get('/teachers?limit=100'),
+        api.get('/subjects?limit=100'),
+        api.get('/classes?limit=100'),
         api.get('/departments'),
       ]);
       setAssignments(aRes.data.data || []);
@@ -42,17 +61,15 @@ const AssignmentsPage = () => {
       setDepartments(dRes.data.data || []);
     } catch (error) {
       console.error('Error loading assignments:', error);
-      toast.error('Failed to load assignments');
+      toast.error('Failed to load workload assignments');
     } finally {
       setIsLoading(false);
     }
   }, [selectedDept]);
 
   useEffect(() => {
-    const timer = setTimeout(() => {
-      fetchData();
-    }, 0);
-    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    fetchData();
   }, [fetchData]);
 
   const handleOpenModal = (a = null) => {
@@ -78,236 +95,499 @@ const AssignmentsPage = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!formData.teacher || !formData.subject || !formData.classRef) {
+      return toast.error('Please select teacher, subject, and class');
+    }
+    setIsSubmitting(true);
     try {
       if (editingAssign) {
         await api.put(`/assignments/${editingAssign._id}`, formData);
-        toast.success('Assignment updated!');
+        toast.success('Assignment updated successfully!');
       } else {
         await api.post('/assignments', formData);
-        toast.success('Assignment created!');
+        toast.success('Workload assignment created successfully!');
       }
       setModalOpen(false);
       fetchData();
     } catch (error) {
       toast.error(error.response?.data?.message || 'Failed to save assignment');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
-  const handleDelete = async (id) => {
-    if (!window.confirm('Remove this workload mapping?')) return;
+  const handleDeleteClick = (a, e) => {
+    if (e) e.stopPropagation();
+    setAssignToDelete(a);
+    setDeleteModalOpen(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!assignToDelete) return;
+    setIsDeleting(true);
     try {
-      await api.delete(`/assignments/${id}`);
-      toast.success('Assignment removed');
+      await api.delete(`/assignments/${assignToDelete._id}`);
+      toast.success('Assignment removed successfully');
+      setDeleteModalOpen(false);
+      setAssignToDelete(null);
       fetchData();
     } catch (error) {
-      console.error('Delete error:', error);
-      toast.error('Failed to delete');
+      toast.error(error.response?.data?.message || 'Failed to remove assignment');
+    } finally {
+      setIsDeleting(false);
     }
   };
 
+  const filteredAssignments = assignments.filter((a) => {
+    const tName = a.teacher?.name || '';
+    const sName = a.subject?.name || '';
+    const sCode = a.subject?.code || '';
+    const cName = a.classRef?.className || '';
+    const q = searchQuery.toLowerCase();
+    return (
+      tName.toLowerCase().includes(q) ||
+      sName.toLowerCase().includes(q) ||
+      sCode.toLowerCase().includes(q) ||
+      cName.toLowerCase().includes(q)
+    );
+  });
+
   const exportToExcel = () => {
+    if (assignments.length === 0) return toast.error('No records to export');
     const data = assignments.map((a) => ({
-      'Teacher': a.teacher?.name || 'N/A',
+      'Teacher Name': a.teacher?.name || 'N/A',
       'Employee ID': a.teacher?.employeeId || 'N/A',
-      'Subject Code': a.subject?.code || 'N/A',
       'Subject Name': a.subject?.name || 'N/A',
-      'Class': `${a.classRef?.className || ''} ${a.classRef?.section || ''}`,
-      'Workload Periods': a.workloadPeriods,
+      'Subject Code': a.subject?.code || 'N/A',
+      'Assigned Class': a.classRef ? `${a.classRef.className} (Sec ${a.classRef.section || 'A'})` : 'N/A',
+      'Workload Periods / Wk': a.workloadPeriods || 4,
     }));
     const worksheet = XLSX.utils.json_to_sheet(data);
     const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, 'Assignments');
-    XLSX.writeFile(workbook, 'Faculty_Course_Assignments_2026.xlsx');
-    toast.success('Exported to Excel!');
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Faculty_Workload');
+    XLSX.writeFile(workbook, 'Faculty_Workload_Allocations_2026.xlsx');
+    toast.success('Exported faculty workload allocations to Excel!');
   };
 
-  return (
-    <div className="space-y-6 pb-12">
-      <div className="glass-card p-6 rounded-3xl flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+  const columns = [
+    {
+      key: 'teacher',
+      label: 'Assigned Faculty Member',
+      render: (row) => (
+        <div className="flex items-center gap-3">
+          <img
+            src={row.teacher?.profilePhoto || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80'}
+            alt={row.teacher?.name || 'Teacher'}
+            className="w-10 h-10 rounded-xl object-cover ring-2 ring-indigo-500/20 shrink-0"
+          />
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="font-bold text-slate-900 dark:text-white">{row.teacher?.name || 'Unassigned'}</span>
+              <Badge variant="primary" size="sm">{row.teacher?.employeeId || 'ID'}</Badge>
+            </div>
+            <span className="text-xs text-slate-500 dark:text-slate-400 block">{row.teacher?.email || ''}</span>
+          </div>
+        </div>
+      ),
+    },
+    {
+      key: 'subject',
+      label: 'Academic Subject',
+      render: (row) => (
         <div>
-          <h1 className="text-2xl font-black text-slate-900 dark:text-white flex items-center gap-2">
-            <UserCheck className="text-indigo-600 dark:text-indigo-400" /> Faculty Course Allocations
-          </h1>
+          <div className="flex items-center gap-1.5">
+            <span className="font-bold text-slate-800 dark:text-slate-200">{row.subject?.name || 'Subject'}</span>
+            <Badge variant="secondary" size="sm">{row.subject?.code || 'CODE'}</Badge>
+          </div>
+          <span className="text-[11px] text-slate-400 block">{row.subject?.type || 'Theory'} Course</span>
+        </div>
+      ),
+    },
+    {
+      key: 'classRef',
+      label: 'Class & Section',
+      render: (row) => (
+        <Badge variant="info">
+          {row.classRef ? `${row.classRef.className} (Sec ${row.classRef.section || 'A'})` : 'Unassigned Class'}
+        </Badge>
+      ),
+    },
+    {
+      key: 'workloadPeriods',
+      label: 'Weekly Workload',
+      render: (row) => (
+        <Badge variant="success" size="sm">
+          {row.workloadPeriods || 4} periods/wk
+        </Badge>
+      ),
+    },
+    {
+      key: 'actions',
+      label: 'Actions',
+      cellClassName: 'text-right',
+      render: (row) => (
+        <div className="flex items-center justify-end gap-1" onClick={(e) => e.stopPropagation()}>
+          <button
+            onClick={() => setViewingAssign(row)}
+            className="p-1.5 rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+            title="View Details"
+          >
+            <Eye size={16} />
+          </button>
+          {user?.role === 'Admin' && (
+            <>
+              <button
+                onClick={() => handleOpenModal(row)}
+                className="p-1.5 rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+                title="Edit"
+              >
+                <Edit2 size={16} />
+              </button>
+              <button
+                onClick={(e) => handleDeleteClick(row, e)}
+                className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-colors cursor-pointer"
+                title="Delete"
+              >
+                <Trash2 size={16} />
+              </button>
+            </>
+          )}
+        </div>
+      ),
+    },
+  ];
+
+  return (
+    <div className="space-y-6 pb-12 animate-in fade-in duration-200">
+      {/* Header */}
+      <GlassCard className="p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <div className="flex items-center gap-2">
+            <div className="p-2 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400">
+              <UserCheck className="w-6 h-6" />
+            </div>
+            <h1 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight">
+              Faculty Workload & Subject Allocations
+            </h1>
+          </div>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-            Map teachers to specific subjects and student batches to define teaching workloads
+            Map professors and lecturers to specific course curriculum and student classroom cohorts.
           </p>
         </div>
 
-        <div className="flex items-center gap-3">
-          <button
-            onClick={exportToExcel}
-            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs shadow-lg shadow-emerald-600/20 transition-all"
-          >
-            <Download size={15} /> Export Excel
-          </button>
-          {user?.role === 'Admin' && (
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="flex items-center bg-slate-100 dark:bg-slate-800 p-1 rounded-xl border border-slate-200 dark:border-slate-700">
             <button
-              onClick={() => handleOpenModal()}
-              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white font-semibold text-xs shadow-lg shadow-indigo-600/20 transition-all"
+              onClick={() => setViewMode('table')}
+              className={`p-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer ${
+                viewMode === 'table' ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-sm' : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'
+              }`}
             >
-              <Plus size={16} /> Allocate Course
+              <List size={15} />
+              <span className="hidden sm:inline">Table</span>
             </button>
+            <button
+              onClick={() => setViewMode('grid')}
+              className={`p-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer ${
+                viewMode === 'grid' ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-sm' : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'
+              }`}
+            >
+              <LayoutGrid size={15} />
+              <span className="hidden sm:inline">Grid</span>
+            </button>
+          </div>
+
+          <Button variant="success" size="sm" icon={Download} onClick={exportToExcel}>
+            Export Excel
+          </Button>
+          {user?.role === 'Admin' && (
+            <Button variant="primary" size="sm" icon={Plus} onClick={() => handleOpenModal()}>
+              Assign Workload
+            </Button>
           )}
         </div>
-      </div>
+      </GlassCard>
 
-      <div className="flex items-center gap-2">
-        <Filter size={14} className="text-slate-400" />
-        <span className="text-xs font-semibold text-slate-600 dark:text-slate-300">Filter Department:</span>
-        <select
-          value={selectedDept}
-          onChange={(e) => setSelectedDept(e.target.value)}
-          className="px-3 py-1.5 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-800 dark:text-white"
-        >
-          <option value="all">All Departments</option>
-          {departments.map((d) => (
-            <option key={d._id} value={d._id}>{d.name} ({d.code})</option>
-          ))}
-        </select>
-      </div>
+      {/* Search & Filters */}
+      <SearchFilterBar
+        searchQuery={searchQuery}
+        onSearchChange={(val) => {
+          setSearchQuery(val);
+          setPage(1);
+        }}
+        searchPlaceholder="Search workload allocations by teacher, subject, or class..."
+        filters={[
+          {
+            key: 'dept',
+            label: 'Department',
+            value: selectedDept,
+            onChange: (val) => {
+              setSelectedDept(val);
+              setPage(1);
+            },
+            options: departments.map((d) => ({ value: d._id, label: d.name })),
+          },
+        ]}
+        hasActiveFilters={Boolean(selectedDept)}
+        onResetFilters={() => setSelectedDept('')}
+      />
 
-      {isLoading ? (
-        <div className="flex items-center justify-center h-64">
-          <div className="w-8 h-8 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin" />
-        </div>
-      ) : assignments.length === 0 ? (
-        <div className="p-16 text-center text-slate-400 font-medium glass-card rounded-3xl">
-          No course allocations found. Click "Allocate Course" to assign teachers to subjects and classes.
-        </div>
+      {/* Main Data Display */}
+      {viewMode === 'table' ? (
+        <Table
+          columns={columns}
+          data={filteredAssignments}
+          isLoading={isLoading}
+          emptyMessage="No faculty workload allocations found matching your search criteria."
+          onRowClick={(row) => setViewingAssign(row)}
+        />
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {assignments.map((a) => (
-            <div key={a._id} className="glass-card p-6 rounded-3xl flex flex-col justify-between hover:border-indigo-500/50 transition-all">
-              <div className="flex items-start justify-between gap-4">
-                <div>
-                  <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-indigo-500/10 text-indigo-600 dark:text-indigo-400">
-                    {a.workloadPeriods} periods / wk
-                  </span>
-                  <h3 className="font-black text-lg text-slate-900 dark:text-white mt-2 flex items-center gap-1.5">
-                    <BookOpen size={16} className="text-violet-500" /> {a.subject?.name} ({a.subject?.code})
-                  </h3>
-                  <p className="text-xs text-indigo-600 dark:text-indigo-400 font-bold mt-1 flex items-center gap-1.5">
-                    <User size={14} /> {a.teacher?.name}
-                  </p>
-                  <p className="text-xs text-slate-500 dark:text-slate-400 font-semibold mt-1 flex items-center gap-1.5">
-                    <GraduationCap size={14} className="text-emerald-500" /> Class: {a.classRef?.className} - {a.classRef?.section}
-                  </p>
-                </div>
+        <>
+          {isLoading ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {Array.from({ length: 6 }).map((_, idx) => (
+                <div key={idx} className="h-44 bg-slate-200 dark:bg-slate-800 rounded-2xl animate-pulse" />
+              ))}
+            </div>
+          ) : filteredAssignments.length === 0 ? (
+            <div className="p-16 text-center text-slate-400 font-medium bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl">
+              No faculty workload allocations found matching your search criteria.
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {filteredAssignments.map((a) => (
+                <GlassCard
+                  key={a._id}
+                  hover
+                  onClick={() => setViewingAssign(a)}
+                  className="p-6 flex flex-col justify-between"
+                >
+                  <div>
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="flex items-center gap-3 overflow-hidden">
+                        <img
+                          src={a.teacher?.profilePhoto || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80'}
+                          alt={a.teacher?.name || 'Teacher'}
+                          className="w-12 h-12 rounded-2xl object-cover ring-2 ring-indigo-500/20 shrink-0"
+                        />
+                        <div className="overflow-hidden">
+                          <Badge variant="primary" size="sm" className="mb-1">{a.teacher?.employeeId || 'Faculty'}</Badge>
+                          <h3 className="font-bold text-base text-slate-900 dark:text-white truncate">{a.teacher?.name || 'Unassigned'}</h3>
+                          <p className="text-xs text-slate-500 dark:text-slate-400 font-medium truncate">
+                            {a.subject?.name || 'Subject Course'}
+                          </p>
+                        </div>
+                      </div>
 
-                {user?.role === 'Admin' && (
-                  <div className="flex items-center gap-1">
-                    <button
-                      onClick={() => handleOpenModal(a)}
-                      className="p-1.5 rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-                      title="Edit"
-                    >
-                      <Edit2 size={15} />
-                    </button>
-                    <button
-                      onClick={() => handleDelete(a._id)}
-                      className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-colors"
-                      title="Delete"
-                    >
-                      <Trash2 size={15} />
-                    </button>
+                      {user?.role === 'Admin' && (
+                        <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
+                          <button
+                            onClick={() => handleOpenModal(a)}
+                            className="p-1.5 rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+                            title="Edit"
+                          >
+                            <Edit2 size={15} />
+                          </button>
+                          <button
+                            onClick={(e) => handleDeleteClick(a, e)}
+                            className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-colors cursor-pointer"
+                            title="Delete"
+                          >
+                            <Trash2 size={15} />
+                          </button>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="mt-4 pt-4 border-t border-slate-100 dark:border-slate-800/80 space-y-2 text-xs">
+                      <div className="flex justify-between text-slate-600 dark:text-slate-400">
+                        <span className="flex items-center gap-1.5"><BookOpen size={13} /> Subject Code:</span>
+                        <span className="font-semibold text-slate-900 dark:text-slate-200">{a.subject?.code || 'N/A'}</span>
+                      </div>
+                      <div className="flex justify-between text-slate-600 dark:text-slate-400">
+                        <span className="flex items-center gap-1.5"><GraduationCap size={13} /> Target Class:</span>
+                        <span className="font-semibold text-slate-900 dark:text-slate-200">
+                          {a.classRef ? `${a.classRef.className} (Sec ${a.classRef.section || 'A'})` : 'N/A'}
+                        </span>
+                      </div>
+                      <div className="flex justify-between text-slate-600 dark:text-slate-400">
+                        <span className="flex items-center gap-1.5"><Clock size={13} /> Weekly Allocation:</span>
+                        <span className="font-bold text-indigo-600 dark:text-indigo-400">{a.workloadPeriods} periods / wk</span>
+                      </div>
+                    </div>
                   </div>
-                )}
-              </div>
+                </GlassCard>
+              ))}
             </div>
-          ))}
-        </div>
+          )}
+        </>
       )}
 
-      {modalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-enter">
-          <div className="w-full max-w-md bg-slate-900 border border-slate-800 rounded-3xl shadow-2xl overflow-hidden">
-            <div className="p-6 bg-gradient-to-r from-indigo-950/80 to-slate-900 border-b border-slate-800 flex items-center justify-between">
-              <h3 className="text-lg font-black text-white">
-                {editingAssign ? 'Edit Workload Mapping' : 'Allocate Course to Faculty'}
-              </h3>
-              <button onClick={() => setModalOpen(false)} className="p-2 rounded-xl bg-slate-800 text-slate-400 hover:text-white">
-                <X size={18} />
-              </button>
+      {/* View Details Drawer */}
+      <Drawer
+        isOpen={Boolean(viewingAssign)}
+        onClose={() => setViewingAssign(null)}
+        title="Workload Allocation Profile"
+        description="Comprehensive mapping between faculty instructor, subject course, and student cohort."
+        footer={
+          user?.role === 'Admin' && viewingAssign ? (
+            <div className="flex items-center justify-end gap-3">
+              <Button
+                variant="secondary"
+                fullWidth
+                onClick={() => {
+                  const a = viewingAssign;
+                  setViewingAssign(null);
+                  handleOpenModal(a);
+                }}
+              >
+                Edit Allocation
+              </Button>
+              <Button
+                variant="danger"
+                fullWidth
+                onClick={() => {
+                  const a = viewingAssign;
+                  setViewingAssign(null);
+                  handleDeleteClick(a);
+                }}
+              >
+                Remove Allocation
+              </Button>
+            </div>
+          ) : null
+        }
+      >
+        {viewingAssign && (
+          <div className="space-y-6">
+            <div className="flex items-center gap-4 p-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-200/60 dark:border-slate-700/60">
+              <img
+                src={viewingAssign.teacher?.profilePhoto || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80'}
+                alt={viewingAssign.teacher?.name || 'Teacher'}
+                className="w-16 h-16 rounded-2xl object-cover ring-2 ring-indigo-500/30"
+              />
+              <div>
+                <Badge variant="primary" size="sm" className="mb-1">{viewingAssign.teacher?.employeeId || 'Faculty ID'}</Badge>
+                <h4 className="text-lg font-bold text-slate-900 dark:text-white">{viewingAssign.teacher?.name || 'Unassigned'}</h4>
+                <p className="text-xs font-semibold text-indigo-600 dark:text-indigo-400">
+                  {viewingAssign.teacher?.email || 'No email provided'}
+                </p>
+              </div>
             </div>
 
-            <form onSubmit={handleSubmit} className="p-6 space-y-4">
-              <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1">Select Teacher</label>
-                <select
-                  required
-                  value={formData.teacher}
-                  onChange={(e) => setFormData({ ...formData, teacher: e.target.value })}
-                  className="w-full p-2.5 bg-slate-800 border border-slate-700 rounded-xl text-xs text-white font-semibold"
-                >
-                  <option value="">-- Faculty Member --</option>
-                  {teachers.map((t) => (
-                    <option key={t._id} value={t._id}>{t.name} ({t.employeeId})</option>
-                  ))}
-                </select>
+            <div className="space-y-3">
+              <h5 className="text-xs font-bold uppercase tracking-wider text-slate-400">Course & Classroom Mapping</h5>
+              <div className="grid grid-cols-2 gap-3 text-xs">
+                <div className="p-3 bg-slate-50 dark:bg-slate-800/40 rounded-xl">
+                  <span className="text-slate-400 block mb-0.5">Subject Course</span>
+                  <span className="font-semibold text-slate-800 dark:text-slate-200">{viewingAssign.subject?.name || 'N/A'}</span>
+                </div>
+                <div className="p-3 bg-slate-50 dark:bg-slate-800/40 rounded-xl">
+                  <span className="text-slate-400 block mb-0.5">Course Code</span>
+                  <span className="font-semibold text-slate-800 dark:text-slate-200">{viewingAssign.subject?.code || 'N/A'}</span>
+                </div>
+                <div className="p-3 bg-slate-50 dark:bg-slate-800/40 rounded-xl col-span-2">
+                  <span className="text-slate-400 block mb-0.5">Student Cohort / Class Section</span>
+                  <span className="font-semibold text-slate-800 dark:text-slate-200">
+                    {viewingAssign.classRef ? `${viewingAssign.classRef.className} (Section ${viewingAssign.classRef.section || 'A'})` : 'Unassigned'}
+                  </span>
+                </div>
               </div>
+            </div>
 
-              <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1">Select Subject</label>
-                <select
-                  required
-                  value={formData.subject}
-                  onChange={(e) => {
-                    const sel = subjects.find((s) => s._id === e.target.value);
-                    setFormData({ ...formData, subject: e.target.value, workloadPeriods: sel ? sel.weeklyRequiredPeriods : 4 });
-                  }}
-                  className="w-full p-2.5 bg-slate-800 border border-slate-700 rounded-xl text-xs text-white font-semibold"
-                >
-                  <option value="">-- Course Subject --</option>
-                  {subjects.map((s) => (
-                    <option key={s._id} value={s._id}>{s.name} ({s.code})</option>
-                  ))}
-                </select>
+            <div className="space-y-3">
+              <h5 className="text-xs font-bold uppercase tracking-wider text-slate-400">Workload Commitment</h5>
+              <div className="p-4 bg-indigo-50/50 dark:bg-indigo-950/30 rounded-xl border border-indigo-100 dark:border-indigo-900/40 flex items-center justify-between">
+                <div>
+                  <span className="text-slate-500 dark:text-slate-400 text-xs block">Assigned Weekly Teaching Periods</span>
+                  <span className="text-xs font-medium text-slate-400">Allocated towards teacher's weekly capacity</span>
+                </div>
+                <span className="font-black text-2xl text-indigo-600 dark:text-indigo-400">{viewingAssign.workloadPeriods}</span>
               </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1">Target Student Batch (Class)</label>
-                <select
-                  required
-                  value={formData.classRef}
-                  onChange={(e) => setFormData({ ...formData, classRef: e.target.value })}
-                  className="w-full p-2.5 bg-slate-800 border border-slate-700 rounded-xl text-xs text-white font-semibold"
-                >
-                  <option value="">-- Student Class --</option>
-                  {classes.map((c) => (
-                    <option key={c._id} value={c._id}>{c.className} {c.section} (Sem {c.semester})</option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1">Weekly Teaching Workload (Periods)</label>
-                <input
-                  type="number"
-                  value={formData.workloadPeriods}
-                  onChange={(e) => setFormData({ ...formData, workloadPeriods: Number(e.target.value) })}
-                  className="w-full p-2.5 bg-slate-800 border border-slate-700 rounded-xl text-xs text-white font-bold text-indigo-400"
-                />
-              </div>
-
-              <div className="pt-4 border-t border-slate-800 flex justify-end gap-3">
-                <button
-                  type="button"
-                  onClick={() => setModalOpen(false)}
-                  className="py-2.5 px-4 rounded-xl bg-slate-800 text-slate-300 font-bold text-xs"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="py-2.5 px-6 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 text-white font-bold text-xs shadow-lg shadow-indigo-600/30"
-                >
-                  Save Allocation
-                </button>
-              </div>
-            </form>
+            </div>
           </div>
-        </div>
-      )}
+        )}
+      </Drawer>
+
+      {/* Add / Edit Workload Assignment Modal */}
+      <Modal
+        isOpen={modalOpen}
+        onClose={() => setModalOpen(false)}
+        title={editingAssign ? 'Edit Workload Allocation' : 'Assign Faculty Workload'}
+        description="Select faculty instructor, course subject, classroom cohort, and weekly period count."
+        maxWidth="max-w-xl"
+      >
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <Select
+              label="Select Faculty Member (Teacher)"
+              required
+              value={formData.teacher}
+              onChange={(val) => setFormData({ ...formData, teacher: val })}
+              options={[
+                { value: '', label: 'Choose Faculty Instructor...' },
+                ...teachers.map((t) => ({ value: t._id, label: `${t.name} (${t.employeeId})` })),
+              ]}
+            />
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <Select
+              label="Academic Subject Course"
+              required
+              value={formData.subject}
+              onChange={(val) => setFormData({ ...formData, subject: val })}
+              options={[
+                { value: '', label: 'Select Subject...' },
+                ...subjects.map((s) => ({ value: s._id, label: `${s.name} (${s.code})` })),
+              ]}
+            />
+            <Select
+              label="Target Class & Section"
+              required
+              value={formData.classRef}
+              onChange={(val) => setFormData({ ...formData, classRef: val })}
+              options={[
+                { value: '', label: 'Select Class Group...' },
+                ...classes.map((c) => ({ value: c._id, label: `${c.className} (Sec ${c.section || 'A'})` })),
+              ]}
+            />
+          </div>
+
+          <div>
+            <Input
+              label="Weekly Workload Periods"
+              type="number"
+              required
+              value={formData.workloadPeriods}
+              onChange={(e) => setFormData({ ...formData, workloadPeriods: Number(e.target.value) })}
+            />
+            <p className="text-[11px] text-slate-400 mt-1">
+              Note: Ensure the assigned periods do not exceed the teacher's maximum weekly capacity.
+            </p>
+          </div>
+
+          <div className="pt-4 border-t border-slate-100 dark:border-slate-800 flex justify-end gap-3">
+            <Button variant="secondary" onClick={() => setModalOpen(false)} disabled={isSubmitting}>
+              Cancel
+            </Button>
+            <Button variant="primary" type="submit" isLoading={isSubmitting}>
+              {editingAssign ? 'Update Allocation' : 'Save Workload Allocation'}
+            </Button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* Confirm Delete Modal */}
+      <ConfirmDeleteModal
+        isOpen={deleteModalOpen}
+        onClose={() => setDeleteModalOpen(false)}
+        onConfirm={confirmDelete}
+        title="Remove Workload Allocation"
+        message="Are you sure you want to remove this faculty workload assignment? This will unlink the teacher from teaching this subject to this class cohort."
+        itemName={assignToDelete?.teacher?.name ? `${assignToDelete.teacher.name} -> ${assignToDelete.subject?.code || 'Subject'}` : ''}
+        isLoading={isDeleting}
+      />
     </div>
   );
 };

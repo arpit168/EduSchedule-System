@@ -5,8 +5,28 @@ import ClassModel from '../models/classModel.js';
 
 const getDepartments = async (req, res, next) => {
   try {
-    const departments = await Department.find().populate('hod', 'name email employeeId profilePhoto');
-    res.status(200).json({ success: true, count: departments.length, data: departments });
+    const { search, page = 1, limit = 50 } = req.query;
+    const query = {};
+    if (search) {
+      query.$or = [
+        { name: { $regex: search, $options: 'i' } },
+        { code: { $regex: search, $options: 'i' } },
+      ];
+    }
+    const pageNum = parseInt(page, 10);
+    const limitNum = parseInt(limit, 10);
+    const skip = (pageNum - 1) * limitNum;
+
+    const total = await Department.countDocuments(query);
+    const departments = await Department.find(query).populate('hod', 'name email employeeId profilePhoto').sort({ name: 1 }).skip(skip).limit(limitNum);
+    res.status(200).json({
+      success: true,
+      count: departments.length,
+      total,
+      page: pageNum,
+      pages: Math.ceil(total / limitNum),
+      data: departments,
+    });
   } catch (error) {
     next(error);
   }

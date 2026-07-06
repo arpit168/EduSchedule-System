@@ -5,13 +5,26 @@ import { User, Lock, Shield, Check, Camera } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 const ProfilePage = () => {
-  const { user } = useAuthStore();
+  const { user, uploadProfilePhoto } = useAuthStore();
   const [name, setName] = useState(user?.name || '');
   const [profilePhoto, setProfilePhoto] = useState(user?.profilePhoto || '');
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [isUpdating, setIsUpdating] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+
+  const handleFileUpload = async (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      setIsUploading(true);
+      const res = await uploadProfilePhoto(file);
+      if (res.success) {
+        setProfilePhoto(res.url);
+      }
+      setIsUploading(false);
+    }
+  };
 
   const handleUpdateProfile = async (e) => {
     e.preventDefault();
@@ -55,9 +68,14 @@ const ProfilePage = () => {
             alt={user?.name}
             className="w-20 h-20 rounded-3xl object-cover ring-4 ring-indigo-500/20 shadow-xl"
           />
-          <div className="absolute inset-0 bg-black/40 rounded-3xl flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer text-white">
-            <Camera size={20} />
-          </div>
+          <label className="absolute inset-0 bg-black/40 rounded-3xl flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer text-white">
+            {isUploading ? (
+              <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+            ) : (
+              <Camera size={20} />
+            )}
+            <input type="file" accept="image/*" onChange={handleFileUpload} className="hidden" />
+          </label>
         </div>
         <div>
           <span className="px-2.5 py-0.5 rounded-full bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 font-bold text-xs">
@@ -98,14 +116,20 @@ const ProfilePage = () => {
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">Profile Photo URL</label>
-              <input
-                type="url"
-                value={profilePhoto}
-                onChange={(e) => setProfilePhoto(e.target.value)}
-                placeholder="https://images.unsplash.com/..."
-                className="w-full p-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl text-xs font-semibold text-slate-900 dark:text-white"
-              />
+              <label className="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">Profile Photo (Upload or URL)</label>
+              <div className="flex gap-2">
+                <input
+                  type="url"
+                  value={profilePhoto}
+                  onChange={(e) => setProfilePhoto(e.target.value)}
+                  placeholder="https://images.unsplash.com/..."
+                  className="flex-1 p-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl text-xs font-semibold text-slate-900 dark:text-white"
+                />
+                <label className="px-4 py-3 bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-800 dark:text-white rounded-2xl text-xs font-bold cursor-pointer flex items-center gap-1 shrink-0 transition-all">
+                  Upload
+                  <input type="file" accept="image/*" onChange={handleFileUpload} className="hidden" />
+                </label>
+              </div>
             </div>
 
             <button

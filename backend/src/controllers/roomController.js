@@ -4,7 +4,7 @@ import fs from 'fs';
 
 const getRooms = async (req, res, next) => {
   try {
-    const { type, building, search } = req.query;
+    const { type, building, search, sort = 'roomNumber', page = 1, limit = 50 } = req.query;
     const query = {};
 
     if (type && type !== 'all') query.type = type;
@@ -16,8 +16,20 @@ const getRooms = async (req, res, next) => {
       ];
     }
 
-    const rooms = await Room.find(query).sort({ roomNumber: 1 });
-    res.status(200).json({ success: true, count: rooms.length, data: rooms });
+    const pageNum = parseInt(page, 10);
+    const limitNum = parseInt(limit, 10);
+    const skip = (pageNum - 1) * limitNum;
+
+    const total = await Room.countDocuments(query);
+    const rooms = await Room.find(query).sort(sort).skip(skip).limit(limitNum);
+    res.status(200).json({
+      success: true,
+      count: rooms.length,
+      total,
+      page: pageNum,
+      pages: Math.ceil(total / limitNum),
+      data: rooms,
+    });
   } catch (error) {
     next(error);
   }
