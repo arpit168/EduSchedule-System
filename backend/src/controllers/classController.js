@@ -2,7 +2,7 @@ import ClassModel from '../models/classModel.js';
 
 const getClasses = async (req, res, next) => {
   try {
-    const { department, semester, search } = req.query;
+    const { department, semester, search, page = 1, limit = 50 } = req.query;
     const query = {};
 
     if (department && department !== 'all') query.department = department;
@@ -14,8 +14,20 @@ const getClasses = async (req, res, next) => {
       ];
     }
 
-    const classes = await ClassModel.find(query).populate('department', 'name code').sort({ className: 1, section: 1 });
-    res.status(200).json({ success: true, count: classes.length, data: classes });
+    const pageNum = parseInt(page, 10);
+    const limitNum = parseInt(limit, 10);
+    const skip = (pageNum - 1) * limitNum;
+
+    const total = await ClassModel.countDocuments(query);
+    const classes = await ClassModel.find(query).populate('department', 'name code').sort({ className: 1, section: 1 }).skip(skip).limit(limitNum);
+    res.status(200).json({
+      success: true,
+      count: classes.length,
+      total,
+      page: pageNum,
+      pages: Math.ceil(total / limitNum),
+      data: classes,
+    });
   } catch (error) {
     next(error);
   }

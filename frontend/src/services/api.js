@@ -10,26 +10,13 @@ const api = axios.create({
   },
 });
 
-// Response interceptor for automatic token refresh
+// Response interceptor
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
-    const originalRequest = error.config;
-
-    // If 401 Unauthorized and not already retrying
-    if (error.response && error.response.status === 401 && !originalRequest._retry && !originalRequest.url.includes('/auth/login')) {
-      originalRequest._retry = true;
-
-      try {
-        await axios.post(`${BASE_URL}/auth/refresh-token`, {}, { withCredentials: true });
-        return api(originalRequest);
-      } catch (refreshError) {
-        // Refresh token failed, redirect to login or clear auth store
-        window.dispatchEvent(new CustomEvent('auth:unauthorized'));
-        return Promise.reject(refreshError);
-      }
+    if (error.response && error.response.status === 401) {
+      window.dispatchEvent(new CustomEvent('auth:unauthorized'));
     }
-
     return Promise.reject(error);
   }
 );

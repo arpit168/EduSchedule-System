@@ -12,14 +12,14 @@ const getDashboardStats = async (req, res, next) => {
     const totalSubjects = await Subject.countDocuments();
     const totalRooms = await Room.countDocuments();
 
-    // Determine current day and period for live occupancy stats
     const daysOfWeek = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
     const now = new Date();
-    const currentDay = daysOfWeek[now.getDay()]; // e.g. 'Monday'
+    const currentDay = daysOfWeek[now.getDay()];
     
-    // For demo/default, if Sunday or outside working hours, default to 'Monday' Period 2 for active preview
-    const activeDay = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'].includes(currentDay) ? currentDay : 'Monday';
-    const activePeriod = 2; // Default to period 2 for live demo stats
+    const activeDay = req.query.day || (['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'].includes(currentDay) ? currentDay : 'Monday');
+    const currentHour = now.getHours();
+    const calculatedPeriod = currentHour >= 9 && currentHour <= 16 ? currentHour - 8 : 1;
+    const activePeriod = req.query.periodNumber ? parseInt(req.query.periodNumber, 10) : calculatedPeriod;
 
     const allTimetables = await Timetable.find({ sessionYear: '2026-2027' }).populate('slots.teacher slots.room classRef');
     
@@ -228,10 +228,46 @@ const getFreeTeachersFinder = async (req, res, next) => {
   }
 };
 
+const getWeeklyUsageReport = async (req, res, next) => {
+  try {
+    const { sessionYear = '2026-2027' } = req.query;
+    const allTimetables = await Timetable.find({ sessionYear }).populate('slots.teacher');
+    const totalTeachers = await Teacher.countDocuments();
+
+    const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    const shortDays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    const maxDailyPeriods = 8;
+    const totalDailyCapacity = totalTeachers * maxDailyPeriods;
+
+    const report = days.map((day, idx) => {
+      let scheduledCount = 0;
+      for (const tt of allTimetables) {
+        for (const slot of tt.slots) {
+          if (!slot.isBreak && !slot.isLunch && slot.day === day && slot.subject && slot.teacher) {
+            scheduledCount++;
+          }
+        }
+      }
+      const freeCount = Math.max(0, totalDailyCapacity - scheduledCount);
+      return {
+        day: shortDays[idx],
+        fullDay: day,
+        scheduled: scheduledCount,
+        free: freeCount,
+      };
+    });
+
+    res.status(200).json({ success: true, data: report });
+  } catch (error) {
+    next(error);
+  }
+};
+
 export {
   getDashboardStats,
   getTeacherWorkloadReport,
   getSubjectDistributionReport,
   getRoomUsageReport,
   getFreeTeachersFinder,
+  getWeeklyUsageReport,
 };

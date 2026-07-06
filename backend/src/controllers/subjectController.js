@@ -4,7 +4,7 @@ import fs from 'fs';
 
 const getSubjects = async (req, res, next) => {
   try {
-    const { search, department, sort = 'name' } = req.query;
+    const { search, department, sort = 'name', page = 1, limit = 50 } = req.query;
     const query = {};
 
     if (department && department !== 'all') {
@@ -18,12 +18,26 @@ const getSubjects = async (req, res, next) => {
       ];
     }
 
+    const pageNum = parseInt(page, 10);
+    const limitNum = parseInt(limit, 10);
+    const skip = (pageNum - 1) * limitNum;
+
+    const total = await Subject.countDocuments(query);
     const subjects = await Subject.find(query)
       .populate('department', 'name code')
       .populate('assignedTeachers', 'name employeeId email profilePhoto')
-      .sort(sort);
+      .sort(sort)
+      .skip(skip)
+      .limit(limitNum);
 
-    res.status(200).json({ success: true, count: subjects.length, data: subjects });
+    res.status(200).json({
+      success: true,
+      count: subjects.length,
+      total,
+      page: pageNum,
+      pages: Math.ceil(total / limitNum),
+      data: subjects,
+    });
   } catch (error) {
     next(error);
   }

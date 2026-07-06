@@ -16,10 +16,11 @@ import {
   CheckCircle2,
   X,
   Sparkles,
+  Menu,
 } from 'lucide-react';
 import api from '../../services/api';
 
-const Navbar = () => {
+const Navbar = ({ onMobileMenuToggle }) => {
   const { user, logout } = useAuthStore();
   const { theme, toggleTheme } = useThemeStore();
   const { notifications, unreadCount, fetchNotifications, markAllAsRead, markAsRead } = useNotificationStore();
@@ -73,9 +74,18 @@ const Navbar = () => {
   };
 
   return (
-    <header className="sticky top-0 z-20 flex items-center justify-between h-16 px-6 border-b border-slate-200/80 dark:border-slate-800/80 bg-white/70 dark:bg-slate-900/70 backdrop-blur-xl transition-colors">
+    <header className="sticky top-0 z-20 flex items-center justify-between h-16 px-4 md:px-6 border-b border-slate-200/80 dark:border-slate-800/80 bg-white/70 dark:bg-slate-900/70 backdrop-blur-xl transition-colors">
+      {/* Mobile Hamburger Menu Toggle */}
+      <button
+        onClick={onMobileMenuToggle}
+        className="lg:hidden p-2 -ml-2 text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors mr-2 cursor-pointer"
+        title="Open Navigation Menu"
+      >
+        <Menu size={22} />
+      </button>
+
       {/* Search Bar */}
-      <div className="relative w-96">
+      <div className="relative flex-1 max-w-md mr-4">
         <div className="relative flex items-center">
           <Search className="absolute left-3.5 text-slate-400" size={18} />
           <input
