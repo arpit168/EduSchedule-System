@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useForm, Controller } from 'react-hook-form';
 import api from '../services/api';
 import useAuthStore from '../store/useAuthStore';
 import { Users, Plus, Edit2, Trash2, Download, Eye, LayoutGrid, List, Mail, Award, Briefcase, Calendar } from 'lucide-react';
@@ -34,17 +35,18 @@ const TeachersPage = () => {
   const [teacherToDelete, setTeacherToDelete] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
-  const [formData, setFormData] = useState({
-    name: '',
-    employeeId: '',
-    email: '',
-    phone: '',
-    department: '',
-    qualification: '',
-    experience: 0,
-    maxDailyPeriods: 4,
-    maxWeeklyPeriods: 20,
-    workingDays: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'],
+  const { register, handleSubmit, reset, control, formState: { errors } } = useForm({
+    defaultValues: {
+      name: '',
+      employeeId: '',
+      email: '',
+      phone: '',
+      department: '',
+      qualification: '',
+      experience: 0,
+      maxDailyPeriods: 4,
+      maxWeeklyPeriods: 20,
+    }
   });
 
   const fetchTeachers = useCallback(async () => {
@@ -68,14 +70,13 @@ const TeachersPage = () => {
   }, [selectedDept, searchQuery, page]);
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchTeachers();
   }, [fetchTeachers]);
 
   const handleOpenModal = (t = null) => {
     if (t) {
       setEditingTeacher(t);
-      setFormData({
+      reset({
         name: t.name || '',
         employeeId: t.employeeId || '',
         email: t.email || '',
@@ -85,11 +86,10 @@ const TeachersPage = () => {
         experience: t.experience || 0,
         maxDailyPeriods: t.maxDailyPeriods || 4,
         maxWeeklyPeriods: t.maxWeeklyPeriods || 20,
-        workingDays: t.workingDays || ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'],
       });
     } else {
       setEditingTeacher(null);
-      setFormData({
+      reset({
         name: '',
         employeeId: `EMP${Math.floor(1000 + Math.random() * 9000)}`,
         email: '',
@@ -99,24 +99,24 @@ const TeachersPage = () => {
         experience: 0,
         maxDailyPeriods: 4,
         maxWeeklyPeriods: 20,
-        workingDays: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'],
       });
     }
     setModalOpen(true);
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (!formData.name || !formData.email || !formData.department) {
-      return toast.error('Please fill in all required fields');
-    }
+  const onSubmit = async (data) => {
     setIsSubmitting(true);
+    // Add default working days if not managed in the form right now
+    const payload = {
+      ...data,
+      workingDays: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
+    };
     try {
       if (editingTeacher) {
-        await api.put(`/teachers/${editingTeacher._id}`, formData);
+        await api.put(`/teachers/${editingTeacher._id}`, payload);
         toast.success('Teacher updated successfully!');
       } else {
-        await api.post('/teachers', formData);
+        await api.post('/teachers', payload);
         toast.success('Teacher added successfully!');
       }
       setModalOpen(false);
@@ -553,20 +553,20 @@ const TeachersPage = () => {
         description="Enter the academic credentials, workload rules, and department assignment."
         maxWidth="max-w-xl"
       >
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Input
               label="Full Name"
               required
-              value={formData.name}
-              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+              {...register('name', { required: 'Name is required' })}
+              error={errors.name?.message}
               placeholder="Prof. Anita Verma"
             />
             <Input
               label="Employee ID"
               required
-              value={formData.employeeId}
-              onChange={(e) => setFormData({ ...formData, employeeId: e.target.value })}
+              {...register('employeeId', { required: 'Employee ID is required' })}
+              error={errors.employeeId?.message}
               placeholder="EMP1005"
             />
           </div>
@@ -576,33 +576,44 @@ const TeachersPage = () => {
               label="Email Address"
               type="email"
               required
-              value={formData.email}
-              onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+              {...register('email', { 
+                required: 'Email is required',
+                pattern: { value: /^\S+@\S+$/i, message: 'Invalid email address' }
+              })}
+              error={errors.email?.message}
               placeholder="anita@Learning.edu"
             />
             <Input
               label="Phone Number"
-              value={formData.phone}
-              onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+              {...register('phone')}
+              error={errors.phone?.message}
               placeholder="+91 9876543210"
             />
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <Select
-              label="Department"
-              required
-              value={formData.department}
-              onChange={(val) => setFormData({ ...formData, department: val })}
-              options={[
-                { value: '', label: 'Select Department' },
-                ...departments.map((d) => ({ value: d._id, label: `${d.name} (${d.code})` })),
-              ]}
+            <Controller
+              name="department"
+              control={control}
+              rules={{ required: 'Department is required' }}
+              render={({ field }) => (
+                <Select
+                  label="Department"
+                  required
+                  {...field}
+                  error={errors.department?.message}
+                  options={[
+                    { value: '', label: 'Select Department' },
+                    ...departments.map((d) => ({ value: d._id, label: `${d.name} (${d.code})` })),
+                  ]}
+                />
+              )}
             />
+            
             <Input
               label="Qualification"
-              value={formData.qualification}
-              onChange={(e) => setFormData({ ...formData, qualification: e.target.value })}
+              {...register('qualification')}
+              error={errors.qualification?.message}
               placeholder="Ph.D in CSE"
             />
           </div>
@@ -611,20 +622,20 @@ const TeachersPage = () => {
             <Input
               label="Experience (Yrs)"
               type="number"
-              value={formData.experience}
-              onChange={(e) => setFormData({ ...formData, experience: Number(e.target.value) })}
+              {...register('experience', { valueAsNumber: true, min: { value: 0, message: 'Min 0' } })}
+              error={errors.experience?.message}
             />
             <Input
               label="Max Daily Periods"
               type="number"
-              value={formData.maxDailyPeriods}
-              onChange={(e) => setFormData({ ...formData, maxDailyPeriods: Number(e.target.value) })}
+              {...register('maxDailyPeriods', { valueAsNumber: true, min: { value: 1, message: 'Min 1' } })}
+              error={errors.maxDailyPeriods?.message}
             />
             <Input
               label="Max Weekly Periods"
               type="number"
-              value={formData.maxWeeklyPeriods}
-              onChange={(e) => setFormData({ ...formData, maxWeeklyPeriods: Number(e.target.value) })}
+              {...register('maxWeeklyPeriods', { valueAsNumber: true, min: { value: 1, message: 'Min 1' } })}
+              error={errors.maxWeeklyPeriods?.message}
             />
           </div>
 

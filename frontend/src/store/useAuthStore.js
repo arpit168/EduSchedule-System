@@ -46,6 +46,9 @@ const useAuthStore = create((set, get) => ({
     set({ isLoading: true, error: null });
     try {
       const response = await api.post('/auth/login', { email, password });
+      if (response.data.accessToken) {
+        localStorage.setItem('accessToken', response.data.accessToken);
+      }
       set({
         user: response.data.user,
         isAuthenticated: true,
@@ -68,6 +71,8 @@ const useAuthStore = create((set, get) => ({
     } catch (error) {
       console.error('Logout error:', error);
     } finally {
+      localStorage.removeItem('accessToken');
+      localStorage.removeItem('refreshToken');
       set({ user: null, isAuthenticated: false });
       toast.success('Logged out successfully');
     }
@@ -90,6 +95,9 @@ const useAuthStore = create((set, get) => ({
     set({ isLoading: true, error: null });
     try {
       const response = await api.post('/auth/register', formData);
+      if (response.data.accessToken) {
+        localStorage.setItem('accessToken', response.data.accessToken);
+      }
       set({
         user: response.data.user,
         isAuthenticated: true,
@@ -127,6 +135,8 @@ const useAuthStore = create((set, get) => ({
 // Listen for unauthorized events from interceptor
 if (typeof window !== 'undefined') {
   window.addEventListener('auth:unauthorized', () => {
+    localStorage.removeItem('accessToken');
+    localStorage.removeItem('refreshToken');
     useAuthStore.setState({ user: null, isAuthenticated: false, isLoading: false });
   });
 }

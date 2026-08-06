@@ -51,7 +51,7 @@ const seedDatabase = async () => {
 
     // 3. Create Users (Admin, HOD, Teacher)
     const adminUser = await User.create({
-      name: 'Dr. Arpit Sharma',
+      name: 'Dr. Arpit Gupta',
       email: 'admin@Antigravity.edu',
       password: 'password123',
       role: 'Admin',

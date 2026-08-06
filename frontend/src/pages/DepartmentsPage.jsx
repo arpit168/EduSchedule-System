@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useForm } from 'react-hook-form';
 import api from '../services/api';
 import useAuthStore from '../store/useAuthStore';
 import { Layers, Plus, Edit2, Trash2, Download, Eye, LayoutGrid, List } from 'lucide-react';
@@ -30,10 +31,8 @@ const DepartmentsPage = () => {
   const [deptToDelete, setDeptToDelete] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
-  const [formData, setFormData] = useState({
-    name: '',
-    code: '',
-    description: '',
+  const { register, handleSubmit, reset, formState: { errors } } = useForm({
+    defaultValues: { name: '', code: '', description: '' }
   });
 
   const fetchDepts = useCallback(async () => {
@@ -50,41 +49,32 @@ const DepartmentsPage = () => {
   }, []);
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchDepts();
   }, [fetchDepts]);
 
   const handleOpenModal = (d = null) => {
     if (d) {
       setEditingDept(d);
-      setFormData({
+      reset({
         name: d.name || '',
         code: d.code || '',
         description: d.description || '',
       });
     } else {
       setEditingDept(null);
-      setFormData({
-        name: '',
-        code: '',
-        description: '',
-      });
+      reset({ name: '', code: '', description: '' });
     }
     setModalOpen(true);
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (!formData.name || !formData.code) {
-      return toast.error('Please provide both department name and code');
-    }
+  const onSubmit = async (data) => {
     setIsSubmitting(true);
     try {
       if (editingDept) {
-        await api.put(`/departments/${editingDept._id}`, formData);
+        await api.put(`/departments/${editingDept._id}`, data);
         toast.success('Department updated successfully!');
       } else {
-        await api.post('/departments', formData);
+        await api.post('/departments', data);
         toast.success('Department created successfully!');
       }
       setModalOpen(false);
@@ -411,20 +401,20 @@ const DepartmentsPage = () => {
         description="Specify institutional wing name, unique identifier code, and overview description."
         maxWidth="max-w-xl"
       >
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Input
               label="Department Name"
               required
-              value={formData.name}
-              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+              {...register('name', { required: 'Department Name is required' })}
+              error={errors.name?.message}
               placeholder="Computer Science & Engineering"
             />
             <Input
               label="Department Code"
               required
-              value={formData.code}
-              onChange={(e) => setFormData({ ...formData, code: e.target.value.toUpperCase() })}
+              {...register('code', { required: 'Department Code is required' })}
+              error={errors.code?.message}
               placeholder="CSE / ECE / MECH"
             />
           </div>
@@ -433,8 +423,8 @@ const DepartmentsPage = () => {
             <Textarea
               label="Description / Mandate"
               rows={4}
-              value={formData.description}
-              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+              {...register('description')}
+              error={errors.description?.message}
               placeholder="Provide an overview of the department's academic focus, laboratories, and degree programs..."
             />
           </div>

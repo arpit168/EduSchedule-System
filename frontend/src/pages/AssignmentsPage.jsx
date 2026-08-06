@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useForm, Controller } from 'react-hook-form';
 import api from '../services/api';
 import useAuthStore from '../store/useAuthStore';
 import { UserCheck, Plus, Edit2, Trash2, Download, Eye, LayoutGrid, List, BookOpen, GraduationCap, Clock } from 'lucide-react';
@@ -35,12 +36,13 @@ const AssignmentsPage = () => {
   const [assignToDelete, setAssignToDelete] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
-  // Form State
-  const [formData, setFormData] = useState({
-    teacher: '',
-    subject: '',
-    classRef: '',
-    workloadPeriods: 4,
+  const { register, handleSubmit, reset, control, formState: { errors } } = useForm({
+    defaultValues: {
+      teacher: '',
+      subject: '',
+      classRef: '',
+      workloadPeriods: 4,
+    }
   });
 
   const fetchData = useCallback(async () => {
@@ -68,14 +70,13 @@ const AssignmentsPage = () => {
   }, [selectedDept]);
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchData();
   }, [fetchData]);
 
   const handleOpenModal = (a = null) => {
     if (a) {
       setEditingAssign(a);
-      setFormData({
+      reset({
         teacher: a.teacher?._id || a.teacher || '',
         subject: a.subject?._id || a.subject || '',
         classRef: a.classRef?._id || a.classRef || '',
@@ -83,7 +84,7 @@ const AssignmentsPage = () => {
       });
     } else {
       setEditingAssign(null);
-      setFormData({
+      reset({
         teacher: teachers[0]?._id || '',
         subject: subjects[0]?._id || '',
         classRef: classes[0]?._id || '',
@@ -93,18 +94,14 @@ const AssignmentsPage = () => {
     setModalOpen(true);
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (!formData.teacher || !formData.subject || !formData.classRef) {
-      return toast.error('Please select teacher, subject, and class');
-    }
+  const onSubmit = async (data) => {
     setIsSubmitting(true);
     try {
       if (editingAssign) {
-        await api.put(`/assignments/${editingAssign._id}`, formData);
+        await api.put(`/assignments/${editingAssign._id}`, data);
         toast.success('Assignment updated successfully!');
       } else {
-        await api.post('/assignments', formData);
+        await api.post('/assignments', data);
         toast.success('Workload assignment created successfully!');
       }
       setModalOpen(false);
@@ -517,40 +514,61 @@ const AssignmentsPage = () => {
         description="Select faculty instructor, course subject, classroom cohort, and weekly period count."
         maxWidth="max-w-xl"
       >
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           <div>
-            <Select
-              label="Select Faculty Member (Teacher)"
-              required
-              value={formData.teacher}
-              onChange={(val) => setFormData({ ...formData, teacher: val })}
-              options={[
-                { value: '', label: 'Choose Faculty Instructor...' },
-                ...teachers.map((t) => ({ value: t._id, label: `${t.name} (${t.employeeId})` })),
-              ]}
+            <Controller
+              name="teacher"
+              control={control}
+              rules={{ required: 'Teacher is required' }}
+              render={({ field }) => (
+                <Select
+                  label="Select Faculty Member (Teacher)"
+                  required
+                  {...field}
+                  error={errors.teacher?.message}
+                  options={[
+                    { value: '', label: 'Choose Faculty Instructor...' },
+                    ...teachers.map((t) => ({ value: t._id, label: `${t.name} (${t.employeeId})` })),
+                  ]}
+                />
+              )}
             />
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <Select
-              label="Academic Subject Course"
-              required
-              value={formData.subject}
-              onChange={(val) => setFormData({ ...formData, subject: val })}
-              options={[
-                { value: '', label: 'Select Subject...' },
-                ...subjects.map((s) => ({ value: s._id, label: `${s.name} (${s.code})` })),
-              ]}
+            <Controller
+              name="subject"
+              control={control}
+              rules={{ required: 'Subject is required' }}
+              render={({ field }) => (
+                <Select
+                  label="Academic Subject Course"
+                  required
+                  {...field}
+                  error={errors.subject?.message}
+                  options={[
+                    { value: '', label: 'Select Subject...' },
+                    ...subjects.map((s) => ({ value: s._id, label: `${s.name} (${s.code})` })),
+                  ]}
+                />
+              )}
             />
-            <Select
-              label="Target Class & Section"
-              required
-              value={formData.classRef}
-              onChange={(val) => setFormData({ ...formData, classRef: val })}
-              options={[
-                { value: '', label: 'Select Class Group...' },
-                ...classes.map((c) => ({ value: c._id, label: `${c.className} (Sec ${c.section || 'A'})` })),
-              ]}
+            <Controller
+              name="classRef"
+              control={control}
+              rules={{ required: 'Class is required' }}
+              render={({ field }) => (
+                <Select
+                  label="Target Class & Section"
+                  required
+                  {...field}
+                  error={errors.classRef?.message}
+                  options={[
+                    { value: '', label: 'Select Class Group...' },
+                    ...classes.map((c) => ({ value: c._id, label: `${c.className} (Sec ${c.section || 'A'})` })),
+                  ]}
+                />
+              )}
             />
           </div>
 
@@ -559,8 +577,8 @@ const AssignmentsPage = () => {
               label="Weekly Workload Periods"
               type="number"
               required
-              value={formData.workloadPeriods}
-              onChange={(e) => setFormData({ ...formData, workloadPeriods: Number(e.target.value) })}
+              {...register('workloadPeriods', { valueAsNumber: true, min: { value: 1, message: 'Min 1' } })}
+              error={errors.workloadPeriods?.message}
             />
             <p className="text-[11px] text-slate-400 mt-1">
               Note: Ensure the assigned periods do not exceed the teacher's maximum weekly capacity.
