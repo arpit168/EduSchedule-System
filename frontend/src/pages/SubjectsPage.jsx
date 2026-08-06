@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useForm, Controller } from 'react-hook-form';
 import api from '../services/api';
 import useAuthStore from '../store/useAuthStore';
 import { BookOpen, Plus, Edit2, Trash2, Download, Eye, LayoutGrid, List, Clock, Award, Tag } from 'lucide-react';
@@ -34,14 +35,16 @@ const SubjectsPage = () => {
   const [subjectToDelete, setSubjectToDelete] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
-  const [formData, setFormData] = useState({
-    name: '',
-    code: '',
-    department: '',
-    type: 'Theory',
-    credits: 4,
-    weeklyRequiredPeriods: 4,
-    color: 'indigo',
+  const { register, handleSubmit, reset, control, formState: { errors } } = useForm({
+    defaultValues: {
+      name: '',
+      code: '',
+      department: '',
+      type: 'Theory',
+      credits: 4,
+      weeklyRequiredPeriods: 4,
+      color: 'indigo',
+    }
   });
 
   const fetchData = useCallback(async () => {
@@ -65,14 +68,13 @@ const SubjectsPage = () => {
   }, [selectedDept, searchQuery, page]);
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchData();
   }, [fetchData]);
 
   const handleOpenModal = (s = null) => {
     if (s) {
       setEditingSubject(s);
-      setFormData({
+      reset({
         name: s.name || '',
         code: s.code || '',
         department: s.department?._id || s.department || '',
@@ -83,7 +85,7 @@ const SubjectsPage = () => {
       });
     } else {
       setEditingSubject(null);
-      setFormData({
+      reset({
         name: '',
         code: `CS${Math.floor(100 + Math.random() * 900)}`,
         department: departments[0]?._id || '',
@@ -96,18 +98,14 @@ const SubjectsPage = () => {
     setModalOpen(true);
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (!formData.name || !formData.code || !formData.department) {
-      return toast.error('Please fill in all required fields');
-    }
+  const onSubmit = async (data) => {
     setIsSubmitting(true);
     try {
       if (editingSubject) {
-        await api.put(`/subjects/${editingSubject._id}`, formData);
+        await api.put(`/subjects/${editingSubject._id}`, data);
         toast.success('Subject updated successfully!');
       } else {
-        await api.post('/subjects', formData);
+        await api.post('/subjects', data);
         toast.success('Subject created successfully!');
       }
       setModalOpen(false);
@@ -504,45 +502,57 @@ const SubjectsPage = () => {
         description="Define course codes, credit weights, and required weekly teaching periods."
         maxWidth="max-w-xl"
       >
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Input
               label="Subject Name"
               required
-              value={formData.name}
-              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+              {...register('name', { required: 'Name is required' })}
+              error={errors.name?.message}
               placeholder="Data Structures & Algorithms"
             />
             <Input
               label="Subject Code"
               required
-              value={formData.code}
-              onChange={(e) => setFormData({ ...formData, code: e.target.value })}
+              {...register('code', { required: 'Code is required' })}
+              error={errors.code?.message}
               placeholder="CS301"
             />
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <Select
-              label="Department"
-              required
-              value={formData.department}
-              onChange={(val) => setFormData({ ...formData, department: val })}
-              options={[
-                { value: '', label: 'Select Department' },
-                ...departments.map((d) => ({ value: d._id, label: `${d.name} (${d.code})` })),
-              ]}
+            <Controller
+              name="department"
+              control={control}
+              rules={{ required: 'Department is required' }}
+              render={({ field }) => (
+                <Select
+                  label="Department"
+                  required
+                  {...field}
+                  error={errors.department?.message}
+                  options={[
+                    { value: '', label: 'Select Department' },
+                    ...departments.map((d) => ({ value: d._id, label: `${d.name} (${d.code})` })),
+                  ]}
+                />
+              )}
             />
-            <Select
-              label="Course Type"
-              value={formData.type}
-              onChange={(val) => setFormData({ ...formData, type: val })}
-              options={[
-                { value: 'Theory', label: 'Theory' },
-                { value: 'Practical', label: 'Practical' },
-                { value: 'Lab', label: 'Laboratory' },
-                { value: 'Tutorial', label: 'Tutorial' },
-              ]}
+            <Controller
+              name="type"
+              control={control}
+              render={({ field }) => (
+                <Select
+                  label="Course Type"
+                  {...field}
+                  options={[
+                    { value: 'Theory', label: 'Theory' },
+                    { value: 'Practical', label: 'Practical' },
+                    { value: 'Lab', label: 'Laboratory' },
+                    { value: 'Tutorial', label: 'Tutorial' },
+                  ]}
+                />
+              )}
             />
           </div>
 
@@ -550,14 +560,14 @@ const SubjectsPage = () => {
             <Input
               label="Credits"
               type="number"
-              value={formData.credits}
-              onChange={(e) => setFormData({ ...formData, credits: Number(e.target.value) })}
+              {...register('credits', { valueAsNumber: true, min: { value: 1, message: 'Min 1' } })}
+              error={errors.credits?.message}
             />
             <Input
               label="Weekly Required Periods"
               type="number"
-              value={formData.weeklyRequiredPeriods}
-              onChange={(e) => setFormData({ ...formData, weeklyRequiredPeriods: Number(e.target.value) })}
+              {...register('weeklyRequiredPeriods', { valueAsNumber: true, min: { value: 1, message: 'Min 1' } })}
+              error={errors.weeklyRequiredPeriods?.message}
             />
           </div>
 

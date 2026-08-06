@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useForm, Controller } from 'react-hook-form';
 import api from '../services/api';
 import useAuthStore from '../store/useAuthStore';
 import { Building2, Plus, Edit2, Trash2, Download, Eye, LayoutGrid, List, Users, Layers, Tag } from 'lucide-react';
@@ -33,12 +34,14 @@ const RoomsPage = () => {
   const [roomToDelete, setRoomToDelete] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
-  const [formData, setFormData] = useState({
-    roomNumber: '',
-    capacity: 60,
-    type: 'Classroom',
-    building: 'Main Block',
-    floor: '1st Floor',
+  const { register, handleSubmit, reset, control, formState: { errors } } = useForm({
+    defaultValues: {
+      roomNumber: '',
+      capacity: 60,
+      type: 'Classroom',
+      building: 'Main Block',
+      floor: '1st Floor',
+    }
   });
 
   const fetchRooms = useCallback(async () => {
@@ -58,14 +61,13 @@ const RoomsPage = () => {
   }, [searchQuery, selectedType, page]);
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchRooms();
   }, [fetchRooms]);
 
   const handleOpenModal = (r = null) => {
     if (r) {
       setEditingRoom(r);
-      setFormData({
+      reset({
         roomNumber: r.roomNumber || '',
         capacity: r.capacity || 60,
         type: r.type || 'Classroom',
@@ -74,7 +76,7 @@ const RoomsPage = () => {
       });
     } else {
       setEditingRoom(null);
-      setFormData({
+      reset({
         roomNumber: `Room ${Math.floor(100 + Math.random() * 300)}`,
         capacity: 60,
         type: 'Classroom',
@@ -85,18 +87,14 @@ const RoomsPage = () => {
     setModalOpen(true);
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (!formData.roomNumber || !formData.capacity) {
-      return toast.error('Please fill in all required fields');
-    }
+  const onSubmit = async (data) => {
     setIsSubmitting(true);
     try {
       if (editingRoom) {
-        await api.put(`/rooms/${editingRoom._id}`, formData);
+        await api.put(`/rooms/${editingRoom._id}`, data);
         toast.success('Room updated successfully!');
       } else {
-        await api.post('/rooms', formData);
+        await api.post('/rooms', data);
         toast.success('Room added successfully!');
       }
       setModalOpen(false);
@@ -495,40 +493,45 @@ const RoomsPage = () => {
         description="Specify room numbers, building locations, floor levels, and seating capacities."
         maxWidth="max-w-xl"
       >
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Input
               label="Room Number / Name"
               required
-              value={formData.roomNumber}
-              onChange={(e) => setFormData({ ...formData, roomNumber: e.target.value })}
+              {...register('roomNumber', { required: 'Room Number is required' })}
+              error={errors.roomNumber?.message}
               placeholder="Room 101 / CS Lab 1"
             />
-            <Select
-              label="Facility Type"
-              value={formData.type}
-              onChange={(val) => setFormData({ ...formData, type: val })}
-              options={[
-                { value: 'Classroom', label: 'Classroom' },
-                { value: 'Laboratory', label: 'Laboratory' },
-                { value: 'Computer Lab', label: 'Computer Lab' },
-                { value: 'Seminar Hall', label: 'Seminar Hall' },
-                { value: 'Auditorium', label: 'Auditorium' },
-              ]}
+            <Controller
+              name="type"
+              control={control}
+              render={({ field }) => (
+                <Select
+                  label="Facility Type"
+                  {...field}
+                  options={[
+                    { value: 'Classroom', label: 'Classroom' },
+                    { value: 'Laboratory', label: 'Laboratory' },
+                    { value: 'Computer Lab', label: 'Computer Lab' },
+                    { value: 'Seminar Hall', label: 'Seminar Hall' },
+                    { value: 'Auditorium', label: 'Auditorium' },
+                  ]}
+                />
+              )}
             />
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Input
               label="Building Block"
-              value={formData.building}
-              onChange={(e) => setFormData({ ...formData, building: e.target.value })}
+              {...register('building')}
+              error={errors.building?.message}
               placeholder="Main Block / Science Wing"
             />
             <Input
               label="Floor Level"
-              value={formData.floor}
-              onChange={(e) => setFormData({ ...formData, floor: e.target.value })}
+              {...register('floor')}
+              error={errors.floor?.message}
               placeholder="1st Floor / Ground Floor"
             />
           </div>
@@ -538,8 +541,8 @@ const RoomsPage = () => {
               label="Seating Capacity"
               type="number"
               required
-              value={formData.capacity}
-              onChange={(e) => setFormData({ ...formData, capacity: Number(e.target.value) })}
+              {...register('capacity', { valueAsNumber: true, min: { value: 1, message: 'Min 1' } })}
+              error={errors.capacity?.message}
             />
           </div>
 

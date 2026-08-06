@@ -32,6 +32,7 @@ const Navbar = ({ onMobileMenuToggle }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState(null);
   const [isSearching, setIsSearching] = useState(false);
+  const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
 
   useEffect(() => {
     fetchNotifications();
@@ -84,8 +85,17 @@ const Navbar = ({ onMobileMenuToggle }) => {
         <Menu size={22} />
       </button>
 
-      {/* Search Bar */}
-      <div className="relative flex-1 max-w-md mr-4">
+      {/* Mobile Search Toggle Button */}
+      <button
+        onClick={() => setMobileSearchOpen(!mobileSearchOpen)}
+        className="md:hidden p-2 text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors mr-1 cursor-pointer"
+        title="Search"
+      >
+        <Search size={20} />
+      </button>
+
+      {/* Desktop & Mobile Collapsible Search Bar */}
+      <div className={`relative flex-1 max-w-md mr-2 sm:mr-4 ${mobileSearchOpen ? 'absolute left-0 right-0 top-16 p-3 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 z-50 shadow-xl block' : 'hidden md:block'}`}>
         <div className="relative flex items-center">
           <Search className="absolute left-3.5 text-slate-400" size={18} />
           <input
@@ -196,15 +206,15 @@ const Navbar = ({ onMobileMenuToggle }) => {
       </div>
 
       {/* Right Controls */}
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-1 sm:gap-2 md:gap-3">
         {/* Academic Session Selector */}
-        <div className="flex items-center gap-2 px-3 py-1.5 bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-200/50 dark:border-indigo-800/50 rounded-xl text-indigo-700 dark:text-indigo-300 text-xs font-semibold">
-          <Calendar size={14} className="text-indigo-500" />
-          <span>Session:</span>
+        <div className="flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-1.5 bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-200/50 dark:border-indigo-800/50 rounded-xl text-indigo-700 dark:text-indigo-300 text-xs font-semibold">
+          <Calendar size={14} className="text-indigo-500 shrink-0" />
+          <span className="hidden sm:inline">Session:</span>
           <select
             value={sessionYear}
             onChange={(e) => setSessionYear(e.target.value)}
-            className="bg-transparent border-none font-bold focus:outline-none cursor-pointer"
+            className="bg-transparent border-none font-bold focus:outline-none cursor-pointer text-xs"
           >
             <option value="2026-2027" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white">2026-2027</option>
             <option value="2025-2026" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white">2025-2026</option>
@@ -290,13 +300,13 @@ const Navbar = ({ onMobileMenuToggle }) => {
         <div className="relative">
           <button
             onClick={() => setShowProfileMenu(!showProfileMenu)}
-            className="flex items-center gap-2.5 p-1.5 pl-3 rounded-xl bg-slate-100 dark:bg-slate-800/80 hover:bg-slate-200 dark:hover:bg-slate-700/80 transition-colors border border-slate-200/50 dark:border-slate-700/50"
+            className="flex items-center gap-2 p-1 pl-2 sm:pl-3 rounded-xl bg-slate-100 dark:bg-slate-800/80 hover:bg-slate-200 dark:hover:bg-slate-700/80 transition-colors border border-slate-200/50 dark:border-slate-700/50"
           >
-            <span className="text-xs font-semibold text-slate-700 dark:text-slate-200">{user?.name}</span>
+            <span className="hidden sm:inline text-xs font-semibold text-slate-700 dark:text-slate-200 truncate max-w-[100px]">{user?.name}</span>
             <img
               src={user?.profilePhoto || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&auto=format&fit=crop&q=80'}
               alt={user?.name}
-              className="w-7 h-7 rounded-lg object-cover"
+              className="w-7 h-7 rounded-lg object-cover shrink-0"
             />
           </button>
 

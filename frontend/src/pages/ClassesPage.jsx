@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useForm, Controller } from 'react-hook-form';
 import api from '../services/api';
 import useAuthStore from '../store/useAuthStore';
 import { GraduationCap, Plus, Edit2, Trash2, Download, Eye, LayoutGrid, List, Users, Calendar, Award } from 'lucide-react';
@@ -34,13 +35,15 @@ const ClassesPage = () => {
   const [classToDelete, setClassToDelete] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
-  const [formData, setFormData] = useState({
-    className: '',
-    section: 'A',
-    semester: 3,
-    batch: '2025-2028',
-    strength: 60,
-    department: '',
+  const { register, handleSubmit, reset, control, formState: { errors } } = useForm({
+    defaultValues: {
+      className: '',
+      section: 'A',
+      semester: 3,
+      batch: '2025-2028',
+      strength: 60,
+      department: '',
+    }
   });
 
   const fetchData = useCallback(async () => {
@@ -64,14 +67,13 @@ const ClassesPage = () => {
   }, [selectedDept, searchQuery, page]);
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchData();
   }, [fetchData]);
 
   const handleOpenModal = (c = null) => {
     if (c) {
       setEditingClass(c);
-      setFormData({
+      reset({
         className: c.className || '',
         section: c.section || 'A',
         semester: c.semester || 3,
@@ -81,7 +83,7 @@ const ClassesPage = () => {
       });
     } else {
       setEditingClass(null);
-      setFormData({
+      reset({
         className: 'BCA',
         section: 'A',
         semester: 3,
@@ -93,18 +95,14 @@ const ClassesPage = () => {
     setModalOpen(true);
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (!formData.className || !formData.department) {
-      return toast.error('Please fill in all required fields');
-    }
+  const onSubmit = async (data) => {
     setIsSubmitting(true);
     try {
       if (editingClass) {
-        await api.put(`/classes/${editingClass._id}`, formData);
+        await api.put(`/classes/${editingClass._id}`, data);
         toast.success('Class updated successfully!');
       } else {
-        await api.post('/classes', formData);
+        await api.post('/classes', data);
         toast.success('Class created successfully!');
       }
       setModalOpen(false);
@@ -497,54 +495,61 @@ const ClassesPage = () => {
         description="Specify class name, section division, semester level, and student count."
         maxWidth="max-w-xl"
       >
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Input
               label="Class Name"
               required
-              value={formData.className}
-              onChange={(e) => setFormData({ ...formData, className: e.target.value })}
+              {...register('className', { required: 'Class Name is required' })}
+              error={errors.className?.message}
               placeholder="BCA / B.Tech / MBA"
             />
             <Input
               label="Section"
-              value={formData.section}
-              onChange={(e) => setFormData({ ...formData, section: e.target.value })}
+              {...register('section')}
+              error={errors.section?.message}
               placeholder="A / B / C"
             />
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <Select
-              label="Department"
-              required
-              value={formData.department}
-              onChange={(val) => setFormData({ ...formData, department: val })}
-              options={[
-                { value: '', label: 'Select Department' },
-                ...departments.map((d) => ({ value: d._id, label: `${d.name} (${d.code})` })),
-              ]}
+            <Controller
+              name="department"
+              control={control}
+              rules={{ required: 'Department is required' }}
+              render={({ field }) => (
+                <Select
+                  label="Department"
+                  required
+                  {...field}
+                  error={errors.department?.message}
+                  options={[
+                    { value: '', label: 'Select Department' },
+                    ...departments.map((d) => ({ value: d._id, label: `${d.name} (${d.code})` })),
+                  ]}
+                />
+              )}
             />
             <Input
               label="Semester"
               type="number"
-              value={formData.semester}
-              onChange={(e) => setFormData({ ...formData, semester: Number(e.target.value) })}
+              {...register('semester', { valueAsNumber: true, min: { value: 1, message: 'Min 1' } })}
+              error={errors.semester?.message}
             />
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Input
               label="Academic Batch"
-              value={formData.batch}
-              onChange={(e) => setFormData({ ...formData, batch: e.target.value })}
+              {...register('batch')}
+              error={errors.batch?.message}
               placeholder="2025-2028"
             />
             <Input
               label="Student Strength"
               type="number"
-              value={formData.strength}
-              onChange={(e) => setFormData({ ...formData, strength: Number(e.target.value) })}
+              {...register('strength', { valueAsNumber: true, min: { value: 1, message: 'Min 1' } })}
+              error={errors.strength?.message}
             />
           </div>
 
