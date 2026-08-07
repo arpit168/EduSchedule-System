@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import useAuthStore from '../../store/useAuthStore';
-import { Mail, Lock, User, Phone, Shield, Upload, AlertCircle, UserPlus, Image as ImageIcon } from 'lucide-react';
+import useThemeStore from '../../store/useThemeStore';
+import { Mail, Lock, User, Phone, Shield, Upload, AlertCircle, UserPlus, Image as ImageIcon, Sun, Moon } from 'lucide-react';
 
 const RegistrationPage = () => {
   const [formData, setFormData] = useState({
@@ -19,6 +20,7 @@ const RegistrationPage = () => {
   const [passwordError, setPasswordError] = useState('');
 
   const { register, uploadProfilePhoto, isLoading } = useAuthStore();
+  const { theme, toggleTheme } = useThemeStore();
   const navigate = useNavigate();
 
   const handleChange = (e) => {
@@ -88,26 +90,38 @@ const RegistrationPage = () => {
   const strengthScore = getPasswordStrength();
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-950 via-slate-900 to-indigo-950 p-4 text-white relative overflow-hidden py-10">
-      {/* Decorative background blur blobs */}
-      <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-indigo-600/20 rounded-full blur-3xl pointer-events-none animate-pulse" />
-      <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-violet-600/20 rounded-full blur-3xl pointer-events-none animate-pulse delay-1000" />
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 via-indigo-50/20 to-slate-100 dark:from-slate-950 dark:via-slate-900 dark:to-indigo-950 p-4 text-slate-900 dark:text-white relative overflow-hidden py-10 transition-colors duration-200">
+      {/* Floating Theme Toggle */}
+      <div className="absolute top-4 right-4 z-20">
+        <button
+          onClick={toggleTheme}
+          className="p-2.5 rounded-xl bg-white dark:bg-slate-800/80 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 shadow-md border border-slate-200 dark:border-slate-700/80 transition-colors cursor-pointer"
+          title="Toggle Dark/Light Theme"
+          type="button"
+        >
+          {theme === 'dark' ? <Sun size={18} className="text-amber-400" /> : <Moon size={18} className="text-indigo-600" />}
+        </button>
+      </div>
 
-      <div className="w-full max-w-2xl bg-slate-900/80 backdrop-blur-2xl border border-slate-800 rounded-3xl shadow-2xl p-8 relative z-10">
+      {/* Decorative background blur blobs */}
+      <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-indigo-500/10 dark:bg-indigo-600/20 rounded-full blur-3xl pointer-events-none animate-pulse" />
+      <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-violet-500/10 dark:bg-violet-600/20 rounded-full blur-3xl pointer-events-none animate-pulse delay-1000" />
+
+      <div className="w-full max-w-2xl bg-white/80 dark:bg-slate-900/80 backdrop-blur-2xl border border-slate-200/80 dark:border-slate-800 rounded-3xl shadow-2xl dark:shadow-slate-950/50 p-8 relative z-10">
         <div className="flex flex-col items-center text-center mb-8">
           <div className="flex items-center justify-center w-14 h-14 rounded-2xl bg-gradient-to-tr from-indigo-600 to-violet-500 text-white font-black text-2xl shadow-xl shadow-indigo-500/30 mb-4">
             A
           </div>
-          <h1 className="text-2xl font-bold tracking-tight text-white flex items-center gap-2">
-            Create an <span className="text-indigo-400">Account</span>
+          <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white flex items-center gap-2">
+            Create an <span className="text-indigo-600 dark:text-indigo-400">Account</span>
           </h1>
-          <p className="text-xs text-slate-400 mt-1">Join the Enterprise Timetable & Attendance Portal</p>
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Join the Enterprise Timetable & Attendance Portal</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1.5">First Name *</label>
+              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">First Name *</label>
               <div className="relative">
                 <User className="absolute left-3.5 top-3 text-slate-500" size={18} />
                 <input
@@ -117,13 +131,13 @@ const RegistrationPage = () => {
                   value={formData.firstName}
                   onChange={handleChange}
                   placeholder="John"
-                  className="w-full pl-10 pr-4 py-2 bg-slate-800/80 border border-slate-700 rounded-xl text-sm text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 transition-all"
+                  className="w-full pl-10 pr-4 py-2 bg-white dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-indigo-500 transition-all"
                 />
               </div>
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1.5">Last Name *</label>
+              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">Last Name *</label>
               <div className="relative">
                 <User className="absolute left-3.5 top-3 text-slate-500" size={18} />
                 <input
@@ -133,7 +147,7 @@ const RegistrationPage = () => {
                   value={formData.lastName}
                   onChange={handleChange}
                   placeholder="Doe"
-                  className="w-full pl-10 pr-4 py-2 bg-slate-800/80 border border-slate-700 rounded-xl text-sm text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 transition-all"
+                  className="w-full pl-10 pr-4 py-2 bg-white dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-indigo-500 transition-all"
                 />
               </div>
             </div>
@@ -141,7 +155,7 @@ const RegistrationPage = () => {
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1.5">Username (Optional)</label>
+              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">Username (Optional)</label>
               <div className="relative">
                 <User className="absolute left-3.5 top-3 text-slate-500" size={18} />
                 <input
@@ -150,13 +164,13 @@ const RegistrationPage = () => {
                   value={formData.username}
                   onChange={handleChange}
                   placeholder="johndoe123"
-                  className="w-full pl-10 pr-4 py-2 bg-slate-800/80 border border-slate-700 rounded-xl text-sm text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 transition-all"
+                  className="w-full pl-10 pr-4 py-2 bg-white dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-indigo-500 transition-all"
                 />
               </div>
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1.5">Phone Number</label>
+              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">Phone Number</label>
               <div className="relative">
                 <Phone className="absolute left-3.5 top-3 text-slate-500" size={18} />
                 <input
@@ -165,7 +179,7 @@ const RegistrationPage = () => {
                   value={formData.phone}
                   onChange={handleChange}
                   placeholder="+1 (555) 000-0000"
-                  className="w-full pl-10 pr-4 py-2 bg-slate-800/80 border border-slate-700 rounded-xl text-sm text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 transition-all"
+                  className="w-full pl-10 pr-4 py-2 bg-white dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-indigo-500 transition-all"
                 />
               </div>
             </div>
@@ -173,7 +187,7 @@ const RegistrationPage = () => {
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1.5">Email Address *</label>
+              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">Email Address *</label>
               <div className="relative">
                 <Mail className="absolute left-3.5 top-3 text-slate-500" size={18} />
                 <input
@@ -183,32 +197,32 @@ const RegistrationPage = () => {
                   value={formData.email}
                   onChange={handleChange}
                   placeholder="john.doe@example.com"
-                  className="w-full pl-10 pr-4 py-2 bg-slate-800/80 border border-slate-700 rounded-xl text-sm text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 transition-all"
+                  className="w-full pl-10 pr-4 py-2 bg-white dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-indigo-500 transition-all"
                 />
               </div>
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1.5">Role *</label>
+              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">Role *</label>
               <div className="relative">
                 <Shield className="absolute left-3.5 top-3 text-slate-500" size={18} />
                 <select
                   name="role"
                   value={formData.role}
                   onChange={handleChange}
-                  className="w-full pl-10 pr-4 py-2 bg-slate-800/80 border border-slate-700 rounded-xl text-sm text-white focus:outline-none focus:border-indigo-500 transition-all appearance-none"
+                  className="w-full pl-10 pr-4 py-2 bg-white dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-slate-900 dark:text-white focus:outline-none focus:border-indigo-500 transition-all appearance-none"
                 >
-                  <option value="Teacher" className="bg-slate-900">Teacher / Faculty</option>
-                  <option value="HOD" className="bg-slate-900">Head of Department (HOD)</option>
-                  <option value="Admin" className="bg-slate-900">Administrator</option>
+                  <option value="Teacher" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white">Teacher / Faculty</option>
+                  <option value="HOD" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white">Head of Department (HOD)</option>
+                  <option value="Admin" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white">Administrator</option>
                 </select>
               </div>
             </div>
           </div>
 
           {/* Profile Photo Upload */}
-          <div className="p-4 bg-slate-800/50 border border-slate-700/60 rounded-2xl flex items-center gap-4">
-            <div className="w-14 h-14 rounded-full bg-slate-700/80 overflow-hidden flex-shrink-0 border border-slate-600 flex items-center justify-center">
+          <div className="p-4 bg-slate-50/50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/60 rounded-2xl flex items-center gap-4">
+            <div className="w-14 h-14 rounded-full bg-slate-200 dark:bg-slate-700/80 overflow-hidden flex-shrink-0 border border-slate-300 dark:border-slate-600 flex items-center justify-center">
               {previewUrl ? (
                 <img src={previewUrl} alt="Preview" className="w-full h-full object-cover" />
               ) : (
@@ -216,14 +230,14 @@ const RegistrationPage = () => {
               )}
             </div>
             <div className="flex-1">
-              <label className="block text-xs font-semibold text-slate-200 mb-1">Profile Photo (Optional)</label>
-              <p className="text-[11px] text-slate-400 mb-2">Upload a JPG, PNG, or WebP image (max 5MB).</p>
-              <label className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-slate-200 rounded-lg text-xs font-medium cursor-pointer transition-all">
+              <label className="block text-xs font-semibold text-slate-850 dark:text-slate-200 mb-1">Profile Photo (Optional)</label>
+              <p className="text-[11px] text-slate-505 dark:text-slate-400 mb-2">Upload a JPG, PNG, or WebP image (max 5MB).</p>
+              <label className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-600 rounded-lg text-xs font-medium cursor-pointer transition-all">
                 <Upload size={14} /> Choose File
                 <input type="file" accept="image/*" onChange={handleFileChange} className="hidden" />
               </label>
               {selectedFile && (
-                <span className="ml-2 text-xs text-indigo-400 font-medium truncate max-w-[150px] inline-block align-middle">
+                <span className="ml-2 text-xs text-indigo-600 dark:text-indigo-400 font-medium truncate max-w-[150px] inline-block align-middle">
                   {selectedFile.name}
                 </span>
               )}
@@ -232,7 +246,7 @@ const RegistrationPage = () => {
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1.5">Password *</label>
+              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">Password *</label>
               <div className="relative">
                 <Lock className="absolute left-3.5 top-3 text-slate-500" size={18} />
                 <input
@@ -242,7 +256,7 @@ const RegistrationPage = () => {
                   value={formData.password}
                   onChange={handleChange}
                   placeholder="••••••••"
-                  className="w-full pl-10 pr-4 py-2 bg-slate-800/80 border border-slate-700 rounded-xl text-sm text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 transition-all"
+                  className="w-full pl-10 pr-4 py-2 bg-white dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-indigo-500 transition-all"
                 />
               </div>
               {/* Password strength bar */}
@@ -258,11 +272,11 @@ const RegistrationPage = () => {
                             : strengthScore === 3
                             ? 'bg-blue-500'
                             : 'bg-emerald-500'
-                          : 'bg-slate-700'
+                          : 'bg-slate-200 dark:bg-slate-700'
                       }`}
                     />
                   ))}
-                  <span className="text-[10px] text-slate-400 ml-1">
+                  <span className="text-[10px] text-slate-550 dark:text-slate-400 ml-1">
                     {strengthScore <= 2 ? 'Weak' : strengthScore === 3 ? 'Good' : 'Strong'}
                   </span>
                 </div>
@@ -270,7 +284,7 @@ const RegistrationPage = () => {
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1.5">Confirm Password *</label>
+              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">Confirm Password *</label>
               <div className="relative">
                 <Lock className="absolute left-3.5 top-3 text-slate-500" size={18} />
                 <input
@@ -280,14 +294,14 @@ const RegistrationPage = () => {
                   value={formData.confirmPassword}
                   onChange={handleChange}
                   placeholder="••••••••"
-                  className="w-full pl-10 pr-4 py-2 bg-slate-800/80 border border-slate-700 rounded-xl text-sm text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 transition-all"
+                  className="w-full pl-10 pr-4 py-2 bg-white dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-indigo-500 transition-all"
                 />
               </div>
             </div>
           </div>
 
           {passwordError && (
-            <div className="flex items-center gap-2 p-2.5 bg-rose-500/10 border border-rose-500/30 rounded-xl text-rose-400 text-xs font-medium">
+            <div className="flex items-center gap-2 p-2.5 bg-rose-500/10 border border-rose-500/30 rounded-xl text-rose-600 dark:text-rose-400 text-xs font-medium">
               <AlertCircle size={15} />
               {passwordError}
             </div>
@@ -296,7 +310,7 @@ const RegistrationPage = () => {
           <button
             type="submit"
             disabled={isLoading || !!passwordError}
-            className="w-full mt-4 py-3 px-4 bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white font-bold text-sm rounded-xl shadow-lg shadow-indigo-600/30 flex items-center justify-center gap-2 transition-all disabled:opacity-50"
+            className="w-full mt-4 py-3 px-4 bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white font-bold text-sm rounded-xl shadow-lg shadow-indigo-600/30 flex items-center justify-center gap-2 transition-all disabled:opacity-50 cursor-pointer"
           >
             {isLoading ? (
               <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
@@ -308,10 +322,10 @@ const RegistrationPage = () => {
           </button>
         </form>
 
-        <div className="mt-6 pt-6 border-t border-slate-800 text-center">
-          <p className="text-xs text-slate-400">
+        <div className="mt-6 pt-6 border-t border-slate-200 dark:border-slate-800 text-center">
+          <p className="text-xs text-slate-500 dark:text-slate-400">
             Already have an account?{' '}
-            <Link to="/login" className="text-indigo-400 hover:text-indigo-300 font-semibold ml-1">
+            <Link to="/login" className="text-indigo-600 dark:text-indigo-400 hover:text-indigo-500 dark:hover:text-indigo-300 font-semibold ml-1">
               Sign In
             </Link>
           </p>

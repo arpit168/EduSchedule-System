@@ -4,6 +4,9 @@ import useAuthStore from '../store/useAuthStore';
 import { CalendarDays, Plus, Edit2, Trash2, Download, X, Clock } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import toast from 'react-hot-toast';
+import Modal from '../components/common/Modal';
+import { Input, Select, Textarea } from '../components/common/FormControls';
+import Button from '../components/common/Button';
 
 const CalendarPage = () => {
   const { user } = useAuthStore();
@@ -187,86 +190,60 @@ const CalendarPage = () => {
         </div>
       )}
 
-      {modalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-enter">
-          <div className="w-full max-w-md bg-slate-900 border border-slate-800 rounded-3xl shadow-2xl overflow-hidden">
-            <div className="p-6 bg-gradient-to-r from-pink-950/80 to-slate-900 border-b border-slate-800 flex items-center justify-between">
-              <h3 className="text-lg font-black text-white">
-                {editingEvent ? 'Edit Calendar Event' : 'Add New Academic Event'}
-              </h3>
-              <button onClick={() => setModalOpen(false)} className="p-2 rounded-xl bg-slate-800 text-slate-400 hover:text-white">
-                <X size={18} />
-              </button>
-            </div>
+      <Modal
+        isOpen={modalOpen}
+        onClose={() => setModalOpen(false)}
+        title={editingEvent ? 'Edit Calendar Event' : 'Add New Academic Event'}
+        description="Configure holiday schedules, mid-term examinations, or campus events."
+        maxWidth="max-w-md"
+      >
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <Input
+            label="Event Title"
+            required
+            value={formData.title}
+            onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+            placeholder="Republic Day / Mid-Term Exams"
+          />
 
-            <form onSubmit={handleSubmit} className="p-6 space-y-4">
-              <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1">Event Title</label>
-                <input
-                  type="text"
-                  required
-                  value={formData.title}
-                  onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                  placeholder="Republic Day / Mid-Term Exams"
-                  className="w-full p-2.5 bg-slate-800 border border-slate-700 rounded-xl text-xs text-white"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-semibold text-slate-300 mb-1">Date</label>
-                  <input
-                    type="date"
-                    required
-                    value={formData.date}
-                    onChange={(e) => setFormData({ ...formData, date: e.target.value })}
-                    className="w-full p-2.5 bg-slate-800 border border-slate-700 rounded-xl text-xs text-white"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-slate-300 mb-1">Event Type</label>
-                  <select
-                    value={formData.type}
-                    onChange={(e) => setFormData({ ...formData, type: e.target.value })}
-                    className="w-full p-2.5 bg-slate-800 border border-slate-700 rounded-xl text-xs text-white font-semibold"
-                  >
-                    <option value="Holiday">Holiday</option>
-                    <option value="Exam">Examination</option>
-                    <option value="Event">Campus Techfest / Workshop</option>
-                  </select>
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1">Description (Optional)</label>
-                <textarea
-                  rows={3}
-                  value={formData.description}
-                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                  placeholder="All academic lectures and labs suspended for the day"
-                  className="w-full p-2.5 bg-slate-800 border border-slate-700 rounded-xl text-xs text-white"
-                />
-              </div>
-
-              <div className="pt-4 border-t border-slate-800 flex justify-end gap-3">
-                <button
-                  type="button"
-                  onClick={() => setModalOpen(false)}
-                  className="py-2.5 px-4 rounded-xl bg-slate-800 text-slate-300 font-bold text-xs"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="py-2.5 px-6 rounded-xl bg-gradient-to-r from-pink-600 to-rose-600 text-white font-bold text-xs shadow-lg shadow-pink-600/30"
-                >
-                  Save Event
-                </button>
-              </div>
-            </form>
+          <div className="grid grid-cols-2 gap-4">
+            <Input
+              label="Date"
+              type="date"
+              required
+              value={formData.date}
+              onChange={(e) => setFormData({ ...formData, date: e.target.value })}
+            />
+            <Select
+              label="Event Type"
+              value={formData.type}
+              onChange={(e) => setFormData({ ...formData, type: e.target.value })}
+              options={[
+                { value: 'Holiday', label: 'Holiday' },
+                { value: 'Exam', label: 'Examination' },
+                { value: 'Event', label: 'Campus Techfest / Workshop' },
+              ]}
+            />
           </div>
-        </div>
-      )}
+
+          <Textarea
+            label="Description (Optional)"
+            rows={3}
+            value={formData.description}
+            onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+            placeholder="All academic lectures and labs suspended for the day"
+          />
+
+          <div className="pt-4 border-t border-slate-200 dark:border-slate-800 flex justify-end gap-3">
+            <Button variant="secondary" onClick={() => setModalOpen(false)}>
+              Cancel
+            </Button>
+            <Button variant="primary" type="submit" className="bg-gradient-to-r from-pink-600 to-rose-600 hover:from-pink-500 hover:to-rose-500 border-none text-white font-bold">
+              Save Event
+            </Button>
+          </div>
+        </form>
+      </Modal>
     </div>
   );
 };

@@ -75,10 +75,10 @@ function App() {
 
         <Suspense
           fallback={
-            <div className="flex items-center justify-center min-h-screen bg-slate-950">
+            <div className="flex items-center justify-center min-h-screen bg-slate-50 dark:bg-slate-950">
               <div className="flex flex-col items-center gap-3">
                 <div className="w-10 h-10 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin shadow-lg shadow-indigo-600/30" />
-                <p className="text-xs font-bold text-slate-400 animate-pulse">Loading Application...</p>
+                <p className="text-xs font-bold text-slate-500 dark:text-slate-400 animate-pulse">Loading Application...</p>
               </div>
             </div>
           }

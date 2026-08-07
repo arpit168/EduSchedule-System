@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import api from '../services/api';
 import useAuthStore from '../store/useAuthStore';
+import useThemeStore from '../store/useThemeStore';
 import {
   Users,
   GraduationCap,
@@ -37,7 +38,16 @@ const COLORS = ['#6366f1', '#10b981', '#8b5cf6', '#f59e0b', '#ec4899', '#06b6d4'
 
 const DashboardPage = () => {
   const { user } = useAuthStore();
+  const { theme } = useThemeStore();
   const [stats, setStats] = useState(null);
+
+  const isDark = theme === 'dark';
+  const gridColor = isDark ? 'rgba(255,255,255,0.08)' : 'rgba(15,23,42,0.08)';
+  const tooltipBg = isDark ? '#0f172a' : '#ffffff';
+  const tooltipBorder = isDark ? '#1e293b' : '#e2e8f0';
+  const tooltipColor = isDark ? '#f8fafc' : '#0f172a';
+  const legendColor = isDark ? '#cbd5e1' : '#475569';
+  const capacityBarColor = isDark ? 'rgba(255,255,255,0.1)' : 'rgba(15,23,42,0.1)';
   const [workloadData, setWorkloadData] = useState([]);
   const [subjectData, setSubjectData] = useState([]);
   const [weeklyUsageData, setWeeklyUsageData] = useState([]);
@@ -71,15 +81,15 @@ const DashboardPage = () => {
   if (isLoading) {
     return (
       <div className="space-y-8 pb-12 animate-pulse">
-        <div className="h-48 rounded-3xl bg-slate-800/80 border border-slate-700/50" />
+        <div className="h-48 rounded-3xl bg-slate-100 dark:bg-slate-800/80 border border-slate-200/50 dark:border-slate-700/50" />
         <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
           {[1, 2, 3, 4].map((i) => (
-            <div key={i} className="h-32 rounded-2xl bg-slate-800/60 border border-slate-700/50" />
+            <div key={i} className="h-32 rounded-2xl bg-slate-100 dark:bg-slate-800/60 border border-slate-200/50 dark:border-slate-700/50" />
           ))}
         </div>
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          <div className="lg:col-span-2 h-96 rounded-3xl bg-slate-800/60 border border-slate-700/50" />
-          <div className="h-96 rounded-3xl bg-slate-800/60 border border-slate-700/50" />
+          <div className="lg:col-span-2 h-96 rounded-3xl bg-slate-100 dark:bg-slate-800/60 border border-slate-200/50 dark:border-slate-700/50" />
+          <div className="h-96 rounded-3xl bg-slate-100 dark:bg-slate-800/60 border border-slate-200/50 dark:border-slate-700/50" />
         </div>
       </div>
     );
@@ -250,16 +260,16 @@ const DashboardPage = () => {
           <div className="h-72 w-full">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={workloadData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#334155" opacity={0.3} />
-                <XAxis dataKey="name" stroke="#94a3b8" fontSize={11} tickFormatter={(val) => val.split(' ')[val.split(' ').length - 1]} />
-                <YAxis stroke="#94a3b8" fontSize={11} />
+                <CartesianGrid strokeDasharray="3 3" stroke={gridColor} />
+                <XAxis dataKey="name" stroke={isDark ? '#94a3b8' : '#64748b'} fontSize={11} tickFormatter={(val) => val.split(' ')[val.split(' ').length - 1]} />
+                <YAxis stroke={isDark ? '#94a3b8' : '#64748b'} fontSize={11} />
                 <Tooltip
-                  contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155', borderRadius: '1rem', color: '#fff' }}
+                  contentStyle={{ backgroundColor: tooltipBg, borderColor: tooltipBorder, borderRadius: '1rem', color: tooltipColor }}
                   itemStyle={{ color: '#818cf8' }}
                 />
-                <Legend wrapperStyle={{ fontSize: '12px', paddingTop: '10px' }} />
+                <Legend wrapperStyle={{ fontSize: '12px', paddingTop: '10px', color: legendColor }} />
                 <Bar dataKey="assignedPeriods" name="Assigned Periods" fill="#6366f1" radius={[8, 8, 0, 0]} />
-                <Bar dataKey="maxWeeklyPeriods" name="Max Capacity" fill="#334155" radius={[8, 8, 0, 0]} opacity={0.5} />
+                <Bar dataKey="maxWeeklyPeriods" name="Max Capacity" fill={capacityBarColor} radius={[8, 8, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -293,8 +303,8 @@ const DashboardPage = () => {
                     <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                   ))}
                 </Pie>
-                <Tooltip contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155', borderRadius: '1rem', color: '#fff' }} />
-                <Legend wrapperStyle={{ fontSize: '12px' }} />
+                <Tooltip contentStyle={{ backgroundColor: tooltipBg, borderColor: tooltipBorder, borderRadius: '1rem', color: tooltipColor }} />
+                <Legend wrapperStyle={{ fontSize: '12px', color: legendColor }} />
               </PieChart>
             </ResponsiveContainer>
           </div>
@@ -320,10 +330,10 @@ const DashboardPage = () => {
                     <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
                   </linearGradient>
                 </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="#334155" opacity={0.3} />
-                <XAxis dataKey="day" stroke="#94a3b8" fontSize={11} />
-                <YAxis stroke="#94a3b8" fontSize={11} />
-                <Tooltip contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155', borderRadius: '1rem', color: '#fff' }} />
+                <CartesianGrid strokeDasharray="3 3" stroke={gridColor} />
+                <XAxis dataKey="day" stroke={isDark ? '#94a3b8' : '#64748b'} fontSize={11} />
+                <YAxis stroke={isDark ? '#94a3b8' : '#64748b'} fontSize={11} />
+                <Tooltip contentStyle={{ backgroundColor: tooltipBg, borderColor: tooltipBorder, borderRadius: '1rem', color: tooltipColor }} />
                 <Area type="monotone" dataKey="scheduled" name="Scheduled Classes" stroke="#10b981" fillOpacity={1} fill="url(#colorSched)" />
               </AreaChart>
             </ResponsiveContainer>
